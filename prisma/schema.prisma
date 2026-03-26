@@ -80,3 +80,10 @@ model UserSignature {
   html      String
   updatedAt DateTime @updatedAt
 }
+
+model UserTemplate {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  html      String
+  updatedAt DateTime @updatedAt
+}

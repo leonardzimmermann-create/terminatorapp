@@ -30,6 +30,7 @@ export default function ProtectedArea() {
   const [testMessage, setTestMessage] = useState<string | null>(null)
   const [signature, setSignature] = useState<string>("")
   const [sigSaveStatus, setSigSaveStatus] = useState<"idle" | "saving" | "saved" | "failed">("idle")
+  const [tmplSaveStatus, setTmplSaveStatus] = useState<"idle" | "saving" | "saved" | "failed">("idle")
 
   const [windowStartDate, setWindowStartDate] = useState<string>(new Date().toISOString().slice(0, 10))
   const [windowStartTime, setWindowStartTime] = useState<string>("09:00")
@@ -44,7 +45,26 @@ export default function ProtectedArea() {
       .then((r) => r.json())
       .then((d) => { if (d.html) setSignature(d.html) })
       .catch(() => {})
+    fetch("/api/template")
+      .then((r) => r.json())
+      .then((d) => { if (d.html) setEventBody(d.html) })
+      .catch(() => {})
   }, [])
+
+  const saveTemplate = async () => {
+    setTmplSaveStatus("saving")
+    try {
+      const r = await fetch("/api/template", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ html: eventBody }),
+      })
+      setTmplSaveStatus(r.ok ? "saved" : "failed")
+    } catch {
+      setTmplSaveStatus("failed")
+    }
+    setTimeout(() => setTmplSaveStatus("idle"), 2500)
+  }
 
   const saveSignature = async () => {
     setSigSaveStatus("saving")
@@ -251,8 +271,44 @@ export default function ProtectedArea() {
       {/* CSV Upload */}
       <div className="border rounded-xl p-4 bg-gray-50">
         <h2 className="text-2xl font-semibold mb-2">Lead-Upload</h2>
-        <p className="mb-2 text-sm text-gray-600">CSV mit Spalten: Anrede, Vorname, Nachname, Email, Firmenname</p>
-        <input type="file" accept=".csv" onChange={handleFile} className="mb-2" />
+        <div className="flex flex-col gap-4">
+          <div>
+            <p className="mb-2 text-sm text-gray-600">CSV-Datei mit Spalten: Anrede, Vorname, Nachname, Email, Firmenname</p>
+            <input type="file" accept=".csv" onChange={handleFile} />
+          </div>
+          <div>
+            <p className="mb-2 text-sm text-gray-600">
+              Oder Excel-Zellen kopieren und hier einfügen (Strg+V) — ohne Kopfzeile, Spaltenreihenfolge: Anrede, Vorname, Nachname, Email, Firmenname
+            </p>
+            <textarea
+              rows={4}
+              placeholder="Hier klicken und Strg+V drücken…"
+              className="w-full border rounded px-2 py-1 text-sm font-mono resize-y"
+              onPaste={(e) => {
+                e.preventDefault()
+                const text = e.clipboardData.getData("text")
+                const lines = text.trim().split(/\r?\n/).filter(Boolean)
+                const items: Lead[] = []
+                for (let i = 0; i < lines.length; i++) {
+                  const fields = lines[i].split("\t").map((v) => v.trim())
+                  if (fields.length !== 5) {
+                    setError(`Zeile ${i + 1} hat ${fields.length} Spalten, erwartet werden 5.`)
+                    return
+                  }
+                  const [anrede, vorname, nachname, email, firmenname] = fields
+                  if (!vorname || !nachname || !email) {
+                    setError(`Zeile ${i + 1}: Vorname, Nachname und Email dürfen nicht leer sein.`)
+                    return
+                  }
+                  items.push({ id: i + 1, anrede, vorname, nachname, email, firmenname, status: "pending" })
+                }
+                setError(null)
+                setLeads(items)
+              }}
+              readOnly
+            />
+          </div>
+        </div>
         {error && <div className="text-red-600 text-sm mt-1">Fehler: {error}</div>}
       </div>
 
@@ -386,10 +442,18 @@ export default function ProtectedArea() {
           <label className="block mb-2 text-sm font-medium">
             Einladungstext / Terminbeschreibung
             <span className="ml-2 text-xs font-normal text-gray-500">
-              Verwende {"{{vorname}}"}, {"{{nachname}}"}, {"{{email}}"} als Platzhalter
+              Verwende Variablen als Platzhalter
             </span>
           </label>
           <RichTextEditor value={eventBody} onChange={setEventBody} />
+          <button
+            type="button"
+            onClick={saveTemplate}
+            disabled={tmplSaveStatus === "saving"}
+            className="mt-3 rounded bg-blue-600 px-4 py-2 text-sm text-white disabled:opacity-50"
+          >
+            {tmplSaveStatus === "saving" ? "Wird gespeichert…" : tmplSaveStatus === "saved" ? "Gespeichert ✓" : tmplSaveStatus === "failed" ? "Fehler beim Speichern" : "Einladungstext speichern"}
+          </button>
         </div>
       </div>
 
