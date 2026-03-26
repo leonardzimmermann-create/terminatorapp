@@ -413,7 +413,7 @@ export default function ProtectedArea() {
         <h2 className="text-xl font-semibold mb-3">Test-Einladung senden</h2>
         <p className="text-sm text-gray-600 mb-3">
           Sendet eine Einladung mit dem aktuellen Text und Zeitfenster an eine einzelne Adresse.
-          Als Platzhalter-Name wird "Test Person" verwendet.
+          Als Platzhalter-Name wird &quot;Test Person&quot; verwendet.
         </p>
         <div className="flex gap-2 items-center">
           <input
