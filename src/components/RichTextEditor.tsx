@@ -7,8 +7,8 @@ import { TextStyleKit } from "@tiptap/extension-text-style"
 import Image from "@tiptap/extension-image"
 import { useEffect, useRef, useState, useCallback } from "react"
 
-// Image extension mit width/height-Unterstützung
-const ResizableImage = Image.extend({
+// Image extension mit width/height-Unterstützung und Base64-Erlaubnis
+const ResizableImage = Image.configure({ allowBase64: true }).extend({
   addAttributes() {
     return {
       ...this.parent?.(),
