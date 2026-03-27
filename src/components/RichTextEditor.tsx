@@ -4,8 +4,27 @@ import { useEditor, EditorContent } from "@tiptap/react"
 import StarterKit from "@tiptap/starter-kit"
 import Underline from "@tiptap/extension-underline"
 import { TextStyleKit } from "@tiptap/extension-text-style"
+import FontFamily from "@tiptap/extension-font-family"
+import { Extension } from "@tiptap/core"
 import Image from "@tiptap/extension-image"
 import { useEffect, useRef, useState, useCallback } from "react"
+
+const FontSize = Extension.create({
+  name: "fontSize",
+  addOptions() { return { types: ["textStyle"] } },
+  addGlobalAttributes() {
+    return [{
+      types: this.options.types,
+      attributes: {
+        fontSize: {
+          default: null,
+          parseHTML: (el) => el.style.fontSize || null,
+          renderHTML: (attrs) => attrs.fontSize ? { style: `font-size: ${attrs.fontSize}` } : {},
+        },
+      },
+    }]
+  },
+})
 
 // Image extension mit width/height-Unterstützung und Base64-Erlaubnis
 const ResizableImage = Image.configure({ allowBase64: true }).extend({
@@ -24,20 +43,24 @@ const VARIABLES = [
   { label: "Nachname", value: "{{nachname}}" },
   { label: "Email", value: "{{email}}" },
   { label: "Firmenname", value: "{{firmenname}}" },
+  { label: "Variable 1", value: "{{var1}}" },
+  { label: "Variable 2", value: "{{var2}}" },
+  { label: "Variable 3", value: "{{var3}}" },
 ]
 
 type Props = {
   value: string
   onChange: (html: string) => void
+  showVariables?: boolean
 }
 
-export default function RichTextEditor({ value, onChange }: Props) {
+export default function RichTextEditor({ value, onChange, showVariables = true }: Props) {
   const [colorInput, setColorInput] = useState("#000000")
   const [imageWidth, setImageWidth] = useState<string>("")
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const editor = useEditor({
-    extensions: [StarterKit, Underline, TextStyleKit, ResizableImage],
+    extensions: [StarterKit, Underline, TextStyleKit, FontFamily, FontSize, ResizableImage],
     content: value,
     immediatelyRender: false,
     onUpdate({ editor }) {
@@ -83,9 +106,50 @@ export default function RichTextEditor({ value, onChange }: Props) {
   )
 
   return (
-    <div className="border rounded overflow-hidden text-sm">
+    <div className="border rounded overflow-hidden text-sm bg-gray-200 text-gray-900">
       {/* Toolbar */}
       <div className="flex flex-wrap gap-1 p-2 bg-gray-100 border-b">
+        {/* Schriftart */}
+        <select
+          onChange={(e) => {
+            if (e.target.value === "") {
+              editor.chain().focus().unsetFontFamily().run()
+            } else {
+              editor.chain().focus().setFontFamily(e.target.value).run()
+            }
+          }}
+          className="border border-gray-300 rounded px-1 py-0.5 text-xs bg-white text-gray-700"
+          defaultValue=""
+        >
+          <option value="">Standard</option>
+          <option value="Arial, sans-serif">Arial</option>
+          <option value="'Times New Roman', serif">Times New Roman</option>
+          <option value="'Courier New', monospace">Courier New</option>
+          <option value="Georgia, serif">Georgia</option>
+          <option value="Verdana, sans-serif">Verdana</option>
+          <option value="Calibri, sans-serif">Calibri</option>
+        </select>
+
+        {/* Schriftgröße */}
+        <select
+          onChange={(e) => {
+            if (e.target.value === "") {
+              editor.chain().focus().setMark("textStyle", { fontSize: null }).run()
+            } else {
+              editor.chain().focus().setMark("textStyle", { fontSize: e.target.value }).run()
+            }
+          }}
+          className="border border-gray-300 rounded px-1 py-0.5 text-xs bg-white text-gray-700"
+          defaultValue=""
+        >
+          <option value="">Größe</option>
+          {[8,10,11,12,14,16,18,20,24,28,32,36,48].map((s) => (
+            <option key={s} value={`${s}pt`}>{s}pt</option>
+          ))}
+        </select>
+
+        <div className="w-px bg-gray-300 mx-1" />
+
         {btn(editor.isActive("bold"), () => editor.chain().focus().toggleBold().run(), "Fett", <b>B</b>)}
         {btn(editor.isActive("italic"), () => editor.chain().focus().toggleItalic().run(), "Kursiv", <i>I</i>)}
         {btn(editor.isActive("underline"), () => editor.chain().focus().toggleUnderline().run(), "Unterstrichen", <u>U</u>)}
@@ -179,24 +243,28 @@ export default function RichTextEditor({ value, onChange }: Props) {
         <div className="w-px bg-gray-300 mx-1" />
 
         {/* Variablen */}
-        <span className="text-xs text-gray-500 self-center">Variable:</span>
-        {VARIABLES.map((v) => (
-          <button
-            key={v.value}
-            type="button"
-            title={`Variable einfügen: ${v.value}`}
-            onClick={() => editor.chain().focus().insertContent(v.value).run()}
-            className="px-2 py-1 rounded text-xs border border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100"
-          >
-            {"{{"}{v.label}{"}}"}
-          </button>
-        ))}
+        {showVariables && (
+          <>
+            <span className="text-xs text-gray-500 self-center">Variable:</span>
+            {VARIABLES.map((v) => (
+              <button
+                key={v.value}
+                type="button"
+                title={`Variable einfügen: ${v.value}`}
+                onClick={() => editor.chain().focus().insertContent(v.value).run()}
+                className="px-2 py-1 rounded text-xs border border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100"
+              >
+                {"{{"}{v.label}{"}}"}
+              </button>
+            ))}
+          </>
+        )}
       </div>
 
       {/* Editor-Fläche */}
       <EditorContent
         editor={editor}
-        className="min-h-[120px] p-3 focus-within:outline-none prose prose-sm max-w-none"
+        className="min-h-[120px] p-3 focus-within:outline-none"
       />
     </div>
   )

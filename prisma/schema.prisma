@@ -66,12 +66,28 @@ model Lead {
 }
 
 model SendLog {
-  id           Int      @id @default(autoincrement())
-  userEmail    String
-  sentAt       DateTime @default(now())
-  totalLeads   Int
-  successCount Int
-  failedCount  Int
+  id             Int              @id @default(autoincrement())
+  userEmail      String
+  sentAt         DateTime         @default(now())
+  totalLeads     Int
+  successCount   Int
+  failedCount    Int
+  acceptedCount  Int?
+  declinedCount  Int?
+  tentativeCount Int?
+  invitations    SentInvitation[]
+}
+
+model SentInvitation {
+  id        Int      @id @default(autoincrement())
+  sendLogId Int
+  sendLog   SendLog  @relation(fields: [sendLogId], references: [id], onDelete: Cascade)
+  eventId   String
+  leadEmail String
+  leadName  String
+  response  String   @default("notResponded")
+  slotStart DateTime?
+  slotEnd   DateTime?
 }
 
 model UserSignature {
@@ -83,7 +99,10 @@ model UserSignature {
 
 model UserTemplate {
   id        Int      @id @default(autoincrement())
-  email     String   @unique
+  email     String
+  name      String
   html      String
   updatedAt DateTime @updatedAt
+
+  @@unique([email, name])
 }

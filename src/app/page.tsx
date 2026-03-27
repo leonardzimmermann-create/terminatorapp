@@ -1,6 +1,5 @@
 'use client'
 
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useSession, signIn, signOut } from 'next-auth/react'
 
@@ -9,55 +8,68 @@ export default function Home() {
   const { data: session, status } = useSession()
 
   return (
-    <main className="min-h-screen p-10">
-      <h1 className="text-4xl font-bold mb-4">Lead Meeting App (öffentlich)</h1>
+    <main className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-6">
+      <div className="w-full max-w-md">
+        {/* Logo / Header */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-blue-600 mb-4 shadow-lg">
+            <span className="text-3xl">⚡</span>
+          </div>
+          <h1 className="text-4xl font-extrabold text-white tracking-tight">Terminator</h1>
+          <p className="text-gray-400 mt-1 text-sm tracking-widest uppercase">Automatisierter Terminversand</p>
+        </div>
 
-      {status === 'loading' && <p>Lade...</p>}
+        {/* Card */}
+        <div className="bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-8 shadow-2xl space-y-5">
+          {status === 'loading' && (
+            <p className="text-center text-gray-400 text-sm">Lade...</p>
+          )}
 
-      {session ? (
-        <>
-          <p className="mb-2">Angemeldet als {session.user?.email}</p>
-          <p className="mb-4">Name: {session.user?.name ?? 'unbekannt'}</p>
+          {session ? (
+            <>
+              <div className="text-center">
+                <p className="text-gray-300 text-sm">Angemeldet als</p>
+                <p className="text-white font-semibold mt-1">{session.user?.email}</p>
+              </div>
 
-          <button
-            className="rounded bg-red-600 px-4 py-2 text-white"
-            onClick={() => signOut({ callbackUrl: '/' })}
-          >
-            Logout
-          </button>
+              <button
+                className="w-full rounded-xl bg-blue-600 hover:bg-blue-500 px-4 py-3 text-white font-semibold transition-colors shadow-lg"
+                onClick={() => router.push('/app')}
+              >
+                Weiter zur App →
+              </button>
 
-          <button
-            className="ml-4 rounded bg-green-600 px-4 py-2 text-white"
-            onClick={() => router.push('/app')}
-          >
-            Weiter zum geschützten Bereich
-          </button>
+              <button
+                className="w-full rounded-xl bg-white/10 hover:bg-white/20 px-4 py-3 text-gray-300 font-medium transition-colors"
+                onClick={() => signOut({ callbackUrl: '/' })}
+              >
+                Logout
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="text-center">
+                <p className="text-gray-300 text-sm">Melde dich mit deinem Microsoft-Unternehmenskonto an.</p>
+              </div>
 
-          <p className="mt-2 text-sm text-gray-600">Alternativ:</p>
-          <Link href="/app" className="text-blue-600 underline">
-            /app (direkter Link)
-          </Link>
-        </>
-      ) : (
-        <>
-          <p className="mb-4">Bitte melde dich mit deinem Microsoft-Unternehmenskonto an.</p>
+              <button
+                className="w-full flex items-center justify-center gap-3 rounded-xl bg-blue-600 hover:bg-blue-500 px-4 py-3 text-white font-semibold transition-colors shadow-lg"
+                onClick={() => signIn('azure-ad', { callbackUrl: '/app' })}
+              >
+                <svg className="w-5 h-5" viewBox="0 0 21 21" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
+                  <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
+                  <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
+                  <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
+                </svg>
+                Mit Microsoft anmelden
+              </button>
+            </>
+          )}
+        </div>
 
-          <button
-            className="rounded bg-blue-600 px-4 py-2 text-white"
-            onClick={() => signIn('azure-ad', { callbackUrl: '/app' })}
-          >
-            Mit Azure AD anmelden
-          </button>
-
-          <p className="mt-3 text-sm text-gray-600">Falls nichts passiert, verwende bitte den manuellen Link:</p>
-          <a
-            className="text-blue-600 underline"
-            href="/api/auth/signin/azure-ad"
-          >
-            /api/auth/signin/azure-ad
-          </a>
-        </>
-      )}
+        <p className="text-center text-gray-600 text-xs mt-6">© 2025 Smartflow Consulting</p>
+      </div>
     </main>
   )
 }
