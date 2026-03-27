@@ -7,8 +7,8 @@ type Invitation = {
   leadEmail: string
   leadName: string
   response: string
-  slotStart: string | null
-  slotEnd: string | null
+  slotStart: string | Date | null
+  slotEnd: string | Date | null
 }
 
 type Log = {
