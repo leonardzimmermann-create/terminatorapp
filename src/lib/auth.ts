@@ -57,9 +57,13 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async signIn({ user }) {
       if (!user.email) return false
-      const blocked = await prisma.blacklistEntry.findUnique({ where: { email: user.email } })
-      if (blocked) return '/not-authorized'
-      await prisma.loginEvent.create({ data: { userEmail: user.email, userName: user.name ?? null } })
+      try {
+        const blocked = await prisma.blacklistEntry.findUnique({ where: { email: user.email } })
+        if (blocked) return '/not-authorized'
+        await prisma.loginEvent.create({ data: { userEmail: user.email, userName: user.name ?? null } })
+      } catch (e) {
+        console.error('[signIn] DB error:', e)
+      }
       return true
     },
     async redirect({ url, baseUrl }) {
