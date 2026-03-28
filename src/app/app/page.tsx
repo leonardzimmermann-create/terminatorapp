@@ -1,6 +1,7 @@
 import { getServerSession } from 'next-auth'
 import { redirect } from 'next/navigation'
 import { authOptions } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
 import ProtectedArea from '@/components/ProtectedArea'
 
 export default async function AppPage() {
@@ -8,6 +9,19 @@ export default async function AppPage() {
 
   if (!session) {
     redirect('/unauthorized')
+  }
+
+  // Track session-start (max once per hour per user)
+  if (session.user?.email) {
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
+    const recent = await prisma.loginEvent.findFirst({
+      where: { userEmail: session.user.email, createdAt: { gte: oneHourAgo } },
+    })
+    if (!recent) {
+      prisma.loginEvent.create({
+        data: { userEmail: session.user.email, userName: session.user.name ?? null },
+      }).catch(() => {})
+    }
   }
 
   return (
