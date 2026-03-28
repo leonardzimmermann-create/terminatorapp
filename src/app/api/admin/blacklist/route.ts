@@ -14,7 +14,7 @@ export async function POST(req: Request) {
   if (!await requireAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   const { email } = await req.json()
   if (!email) return NextResponse.json({ error: 'Email required' }, { status: 400 })
-  const entry = await prisma.whitelistEntry.upsert({
+  const entry = await prisma.blacklistEntry.upsert({
     where: { email },
     create: { email },
     update: {},
@@ -26,6 +26,6 @@ export async function DELETE(req: Request) {
   if (!await requireAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   const { email } = await req.json()
   if (!email) return NextResponse.json({ error: 'Email required' }, { status: 400 })
-  await prisma.whitelistEntry.delete({ where: { email } })
+  await prisma.blacklistEntry.delete({ where: { email } })
   return NextResponse.json({ ok: true })
 }
