@@ -106,3 +106,18 @@ model UserTemplate {
 
   @@unique([email, name])
 }
+
+model LoginEvent {
+  id        Int      @id @default(autoincrement())
+  userEmail String
+  userName  String?
+  createdAt DateTime @default(now())
+
+  @@index([userEmail])
+}
+
+model BlacklistEntry {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  createdAt DateTime @default(now())
+}

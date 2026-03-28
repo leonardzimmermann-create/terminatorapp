@@ -38,9 +38,16 @@ export default async function AdminPage() {
           </div>
         </div>
 
-        <a href="/app" className="mb-6 inline-flex items-center gap-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 px-4 py-2 text-sm text-gray-300 font-medium transition-colors">
-          ← Zurück zum Versand
-        </a>
+        <div className="flex items-center gap-3 mb-6">
+          <a href="/app" className="inline-flex items-center gap-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 px-4 py-2 text-sm text-gray-300 font-medium transition-colors">
+            ← Zurück zum Versand
+          </a>
+          {isAdmin && (
+            <a href="/app/admin" className="inline-flex items-center gap-2 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/30 px-4 py-2 text-sm text-purple-300 font-medium transition-colors">
+              🛡️ Admin
+            </a>
+          )}
+        </div>
 
         {dbError ? (
           <div className="bg-red-900/30 border border-red-500/30 rounded-xl p-4 text-red-300 text-sm font-mono">{dbError}</div>

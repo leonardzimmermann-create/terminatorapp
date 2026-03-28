@@ -2,6 +2,9 @@ import NextAuth from 'next-auth'
 import type { NextAuthOptions } from 'next-auth'
 import type { JWT } from 'next-auth/jwt'
 import AzureADProvider from 'next-auth/providers/azure-ad'
+import { prisma } from '@/lib/prisma'
+
+const ADMIN_EMAIL = 'leonard.zimmermann@smartflow-consulting.com'
 
 async function refreshAccessToken(token: JWT): Promise<JWT> {
   try {
@@ -52,6 +55,13 @@ export const authOptions: NextAuthOptions = {
   session: { strategy: 'jwt' },
   pages: { signIn: '/' },
   callbacks: {
+    async signIn({ user }) {
+      if (!user.email) return false
+      const blocked = await prisma.blacklistEntry.findUnique({ where: { email: user.email } })
+      if (blocked) return '/not-authorized'
+      await prisma.loginEvent.create({ data: { userEmail: user.email, userName: user.name ?? null } })
+      return true
+    },
     async redirect({ url, baseUrl }) {
       if (url.startsWith('/')) return `${baseUrl}${url}`
       if (new URL(url).origin === baseUrl) return url

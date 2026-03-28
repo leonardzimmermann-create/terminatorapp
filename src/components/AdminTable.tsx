@@ -35,12 +35,16 @@ const responseLabel = (r: string) => {
 export default function AdminTable({ logs: initialLogs, currentUserEmail }: { logs: Log[]; currentUserEmail: string }) {
   const [logs, setLogs] = useState<Log[]>(initialLogs)
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
+  const [collapsed, setCollapsed] = useState<Set<number>>(new Set())
   const [refreshing, setRefreshing] = useState(false)
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState("")
+  const [userSearch, setUserSearch] = useState("")
 
+  const isAdmin = currentUserEmail === "leonard.zimmermann@smartflow-consulting.com"
   const searchTerm = search.trim().toLowerCase()
-  const isFiltering = !!searchTerm || !!statusFilter
+  const userSearchTerm = userSearch.trim().toLowerCase()
+  const isFiltering = !!searchTerm || !!statusFilter || !!userSearchTerm
 
   const matchesInv = (inv: Invitation) => {
     const emailOk = !searchTerm || inv.leadEmail.toLowerCase().includes(searchTerm)
@@ -49,15 +53,26 @@ export default function AdminTable({ logs: initialLogs, currentUserEmail }: { lo
   }
 
   const filteredLogs = isFiltering
-    ? logs.filter((l) => l.invitations.some(matchesInv))
+    ? logs.filter((l) => {
+        const userOk = !userSearchTerm || l.userEmail.toLowerCase().includes(userSearchTerm)
+        return userOk && l.invitations.some(matchesInv)
+      })
     : logs
 
   const toggleExpand = (id: number) => {
-    setExpanded((prev) => {
-      const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
-      return next
-    })
+    if (isFiltering) {
+      setCollapsed((prev) => {
+        const next = new Set(prev)
+        next.has(id) ? next.delete(id) : next.add(id)
+        return next
+      })
+    } else {
+      setExpanded((prev) => {
+        const next = new Set(prev)
+        next.has(id) ? next.delete(id) : next.add(id)
+        return next
+      })
+    }
   }
 
   const refreshAll = async () => {
@@ -97,16 +112,25 @@ export default function AdminTable({ logs: initialLogs, currentUserEmail }: { lo
           <p className="text-gray-500 text-xs whitespace-nowrap">Status aktualisieren gilt nur für eigene Versendungen.</p>
         </div>
         <div className="flex items-center gap-3 w-full sm:w-auto">
+          {isAdmin && (
+            <input
+              type="text"
+              placeholder="Nach User-E-Mail suchen…"
+              value={userSearch}
+              onChange={(e) => { setUserSearch(e.target.value); setCollapsed(new Set()) }}
+              className="rounded-xl bg-white/5 border border-white/10 px-4 py-2 text-sm text-gray-300 placeholder-gray-600 focus:outline-none focus:border-blue-500 w-56"
+            />
+          )}
           <input
             type="text"
             placeholder="Nach Empfänger-E-Mail suchen…"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); setCollapsed(new Set()) }}
             className="rounded-xl bg-white/5 border border-white/10 px-4 py-2 text-sm text-gray-300 placeholder-gray-600 focus:outline-none focus:border-blue-500 w-64"
           />
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(e) => { setStatusFilter(e.target.value); setCollapsed(new Set()) }}
             className="rounded-xl bg-gray-800 border border-white/10 px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-blue-500"
           >
             <option value="">Alle Stati</option>
@@ -143,7 +167,7 @@ export default function AdminTable({ logs: initialLogs, currentUserEmail }: { lo
           </thead>
           <tbody>
             {filteredLogs.map((log) => {
-              const isExpanded = expanded.has(log.id) || isFiltering
+              const isExpanded = isFiltering ? !collapsed.has(log.id) : expanded.has(log.id)
               const visibleInvitations = isFiltering
                 ? log.invitations.filter(matchesInv)
                 : log.invitations
