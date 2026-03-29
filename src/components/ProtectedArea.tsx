@@ -221,7 +221,7 @@ export default function ProtectedArea() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          leads: [{ id: 0, vorname: "Test", nachname: "Person", anrede: "", firmenname: "", email: testEmail }],
+          leads: [{ id: 0, anrede: "Herr", vorname: "Max", nachname: "Mustermann", firmenname: "Beispiel GmbH", email: testEmail, var1: "Beispiel1", var2: "Beispiel2", var3: "Beispiel3" }],
           windowStart: start.toISOString(),
           windowEnd: end.toISOString(),
           durationMinutes,
@@ -230,8 +230,25 @@ export default function ProtectedArea() {
         }),
       })
       if (!response.ok) throw new Error((await response.text()) || "Fehler beim Test-Versand")
-      const data = await response.json()
-      const result = data.results?.[0] as { status: string; message: string } | undefined
+
+      const reader = response.body?.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ""
+      let result: { status: string; message: string } | undefined
+
+      while (reader) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split("\n")
+        buffer = lines.pop() ?? ""
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue
+          const data = JSON.parse(line.slice(6))
+          if (data.type === "done") result = data.results?.[0]
+        }
+      }
+
       if (result?.status === "success") {
         setTestStatus("success"); setTestMessage(`Test-Einladung an ${testEmail} versendet.`)
       } else {
@@ -413,7 +430,7 @@ export default function ProtectedArea() {
       <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-2xl p-5 sm:p-6 space-y-4">
         <div>
           <h2 className="text-lg font-bold text-white">Test-Einladung</h2>
-          <p className="text-sm text-gray-400">Sendet eine Einladung mit dem aktuellen Text an eine einzelne Adresse. Platzhalter-Name: &quot;Test Person&quot;</p>
+          <p className="text-sm text-gray-400">Sendet eine Einladung mit dem aktuellen Text an eine einzelne Adresse. Platzhalter: Herr Max Mustermann, Beispiel GmbH, var1/2/3 = Beispiel1/2/3</p>
         </div>
         <div className="flex flex-wrap gap-2 items-center">
           <input
