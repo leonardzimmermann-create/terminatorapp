@@ -45,9 +45,9 @@ export default function ProtectedArea() {
   const [selectedTemplateId, setSelectedTemplateId] = useState<number | null>(null)
   const [templateName, setTemplateName] = useState<string>("")
 
-  const [windowStartDate, setWindowStartDate] = useState<string>(new Date().toISOString().slice(0, 10))
+  const [windowStartDate, setWindowStartDate] = useState<string>(new Date(Date.now() + 86400000).toISOString().slice(0, 10))
   const [windowStartTime, setWindowStartTime] = useState<string>("09:00")
-  const [windowEndDate, setWindowEndDate] = useState<string>(new Date().toISOString().slice(0, 10))
+  const [windowEndDate, setWindowEndDate] = useState<string>(new Date(Date.now() + 86400000).toISOString().slice(0, 10))
   const [windowEndTime, setWindowEndTime] = useState<string>("12:00")
   const [durationMinutes, setDurationMinutes] = useState<number>(30)
   const [parallelCount, setParallelCount] = useState<number>(1)
@@ -174,7 +174,7 @@ export default function ProtectedArea() {
           windowEnd: end.toISOString(),
           durationMinutes,
           parallelCount,
-          eventBody: signature ? `${eventBody}<br><br>${signature}` : eventBody,
+          eventBody: signature ? `${eventBody}<br>${signature}` : eventBody,
         }),
       })
       if (!response.ok) throw new Error((await response.text()) || "Fehler beim Versenden")
@@ -226,7 +226,7 @@ export default function ProtectedArea() {
           windowEnd: end.toISOString(),
           durationMinutes,
           parallelCount: 1,
-          eventBody: signature ? `${eventBody}<br><br>${signature}` : eventBody,
+          eventBody: signature ? `${eventBody}<br>${signature}` : eventBody,
         }),
       })
       if (!response.ok) throw new Error((await response.text()) || "Fehler beim Test-Versand")
@@ -525,7 +525,7 @@ export default function ProtectedArea() {
               <p className="text-xs text-gray-400 mb-2 uppercase tracking-wide">Vorschau Einladungstext</p>
               <div
                 className="bg-white rounded-xl p-4 text-gray-900 text-base max-h-[500px] overflow-y-auto"
-                dangerouslySetInnerHTML={{ __html: (signature ? `${eventBody}<br><br>${signature}` : eventBody)
+                dangerouslySetInnerHTML={{ __html: (signature ? `${eventBody}<br>${signature}` : eventBody)
                   .replace(/<p>/gi, '<p style="margin:0;padding:0;">')
                   .replace(/<p style="margin:0;padding:0;"><\/p>/gi, '<p style="margin:0;padding:0;"><br></p>') }}
               />
