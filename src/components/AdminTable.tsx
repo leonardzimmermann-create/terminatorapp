@@ -55,7 +55,10 @@ export default function AdminTable({ logs: initialLogs, currentUserEmail }: { lo
   const filteredLogs = isFiltering
     ? logs.filter((l) => {
         const userOk = !userSearchTerm || l.userEmail.toLowerCase().includes(userSearchTerm)
-        return userOk && l.invitations.some(matchesInv)
+        if (!userOk) return false
+        // Runs ohne Einladungsdaten: nur anzeigen wenn kein Email-Filter aktiv
+        if (l.invitations.length === 0) return !searchTerm
+        return l.invitations.some(matchesInv)
       })
     : logs
 
