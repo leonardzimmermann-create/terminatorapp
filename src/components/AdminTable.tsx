@@ -48,7 +48,8 @@ export default function AdminTable({ logs: initialLogs, currentUserEmail }: { lo
 
   const matchesInv = (inv: Invitation) => {
     const emailOk = !searchTerm || inv.leadEmail.toLowerCase().includes(searchTerm)
-    const statusOk = !statusFilter || inv.response === statusFilter
+    const invResponse = inv.response === 'none' ? 'notResponded' : inv.response
+    const statusOk = !statusFilter || invResponse === statusFilter
     return emailOk && statusOk
   }
 

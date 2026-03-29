@@ -55,7 +55,8 @@ export async function POST(req: NextRequest) {
         const attendee = resp.body?.attendees?.find((a) =>
           a.emailAddress.address.toLowerCase() === inv.leadEmail.toLowerCase()
         )
-        fetchedResponses.push({ inv, response: attendee?.status?.response ?? 'notResponded' })
+        const raw = attendee?.status?.response ?? 'notResponded'
+        fetchedResponses.push({ inv, response: raw === 'none' ? 'notResponded' : raw })
       }
     } catch {
       for (const inv of slice) {
