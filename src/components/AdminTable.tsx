@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 
 type Invitation = {
   id: number
@@ -42,6 +42,7 @@ export default function AdminTable({ logs: initialLogs, currentUserEmail }: { lo
   const [userSearch, setUserSearch] = useState("")
 
   const isAdmin = currentUserEmail === "leonard.zimmermann@smartflow-consulting.com"
+  const didAutoRefresh = useRef(false)
   const searchTerm = search.trim().toLowerCase()
   const userSearchTerm = userSearch.trim().toLowerCase()
   const isFiltering = !!searchTerm || !!statusFilter || !!userSearchTerm
@@ -79,7 +80,7 @@ export default function AdminTable({ logs: initialLogs, currentUserEmail }: { lo
     }
   }
 
-  const refreshAll = async () => {
+  const refreshAll: () => Promise<void> = async () => {
     const ownLogs = logs.filter((l) => l.userEmail === currentUserEmail)
     if (ownLogs.length === 0) return
     setRefreshing(true)
@@ -104,6 +105,12 @@ export default function AdminTable({ logs: initialLogs, currentUserEmail }: { lo
       setRefreshing(false)
     }
   }
+
+  useEffect(() => {
+    if (didAutoRefresh.current) return
+    didAutoRefresh.current = true
+    refreshAll()
+  })
 
   if (logs.length === 0) {
     return <p className="text-gray-400 p-6">Noch keine Versendungen protokolliert.</p>
