@@ -102,6 +102,7 @@ model UserTemplate {
   email     String
   name      String
   html      String
+  subject   String   @default("")
   updatedAt DateTime @updatedAt
 
   @@unique([email, name])

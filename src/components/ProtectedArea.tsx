@@ -41,9 +41,10 @@ export default function ProtectedArea() {
   const [signature, setSignature] = useState<string>("")
   const [sigSaveStatus, setSigSaveStatus] = useState<"idle" | "saving" | "saved" | "failed">("idle")
   const [tmplSaveStatus, setTmplSaveStatus] = useState<"idle" | "saving" | "saved" | "failed">("idle")
-  const [templates, setTemplates] = useState<{ id: number; name: string; html: string }[]>([])
+  const [templates, setTemplates] = useState<{ id: number; name: string; html: string; subject: string }[]>([])
   const [selectedTemplateId, setSelectedTemplateId] = useState<number | null>(null)
   const [templateName, setTemplateName] = useState<string>("")
+  const [eventSubject, setEventSubject] = useState<string>("Hier Terminbetreff eingeben")
 
   const [windowStartDate, setWindowStartDate] = useState<string>(new Date(Date.now() + 86400000).toISOString().slice(0, 10))
   const [windowStartTime, setWindowStartTime] = useState<string>("09:00")
@@ -66,6 +67,7 @@ export default function ProtectedArea() {
           setSelectedTemplateId(d.templates[0].id)
           setTemplateName(d.templates[0].name)
           setEventBody(d.templates[0].html)
+          if (d.templates[0].subject) setEventSubject(d.templates[0].subject)
         }
       })
       .catch(() => {})
@@ -78,14 +80,14 @@ export default function ProtectedArea() {
       const r = await fetch("/api/template", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: selectedTemplateId, name: templateName.trim(), html: eventBody }),
+        body: JSON.stringify({ id: selectedTemplateId, name: templateName.trim(), html: eventBody, subject: eventSubject }),
       })
       const data = await r.json()
       if (r.ok && data.template) {
         setTemplates((prev) => {
           const exists = prev.find((t) => t.id === data.template.id)
-          if (exists) return prev.map((t) => t.id === data.template.id ? data.template : t)
-          return [data.template, ...prev]
+          if (exists) return prev.map((t) => t.id === data.template.id ? { ...t, ...data.template } : t)
+          return [{ ...data.template, subject: data.template.subject ?? '' }, ...prev]
         })
         setSelectedTemplateId(data.template.id)
         setTmplSaveStatus("saved")
@@ -107,10 +109,12 @@ export default function ProtectedArea() {
       setSelectedTemplateId(remaining[0].id)
       setTemplateName(remaining[0].name)
       setEventBody(remaining[0].html)
+      if (remaining[0].subject) setEventSubject(remaining[0].subject)
     } else {
       setSelectedTemplateId(null)
       setTemplateName("")
       setEventBody("<p>Hallo {{vorname}},</p><p>ich möchte Sie zu einem Teams-Termin einladen.</p>")
+      setEventSubject("Hier Terminbetreff eingeben")
     }
   }
 
@@ -163,18 +167,24 @@ export default function ProtectedArea() {
     if (isNaN(start.getTime()) || isNaN(end.getTime()) || end <= start) { setError("Ungültiges Zeitfenster."); return }
     if (durationMinutes <= 0) { setError("Dauer muss größer als 0 sein."); return }
     if (parallelCount <= 0) { setError("Parallelität muss mindestens 1 sein."); return }
-    setSendStatus("sending"); setError(null); setProgress({ sent: 0, total: Math.min(leads.length, schedulableLeads) })
+
+    // Retry mode: only send leads that previously failed; never re-send successful ones
+    const hasFailedLeads = leads.some((l) => l.status === "failed")
+    const leadsToSend = hasFailedLeads ? leads.filter((l) => l.status === "failed") : leads
+
+    setSendStatus("sending"); setError(null); setProgress({ sent: 0, total: Math.min(leadsToSend.length, schedulableLeads) })
     try {
       const response = await fetch("/api/teams/send-invitations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          leads,
+          leads: leadsToSend,
           windowStart: start.toISOString(),
           windowEnd: end.toISOString(),
           durationMinutes,
           parallelCount,
           eventBody: signature ? `${eventBody}<br>${signature}` : eventBody,
+          eventSubject,
         }),
       })
       if (!response.ok) throw new Error((await response.text()) || "Fehler beim Versenden")
@@ -193,13 +203,16 @@ export default function ProtectedArea() {
           if (!line.startsWith("data: ")) continue
           const data = JSON.parse(line.slice(6))
           if (data.type === "progress") {
-            setProgress({ sent: data.sent, total: data.total })
+            setProgress((prev) => prev ? { ...prev, sent: data.sent } : { sent: data.sent, total: data.total })
           } else if (data.type === "done") {
-            setLeads((prev) => prev.map((lead, i) => ({
-              ...lead,
-              status: data.results[i]?.status === "success" ? "success" : "failed",
-              message: data.results[i]?.message,
-            })))
+            const resultsById = new Map<number, { status: string; message: string }>(
+              data.results.map((r: { id: number; status: string; message: string }) => [r.id, r])
+            )
+            setLeads((prev) => prev.map((lead) => {
+              const result = resultsById.get(lead.id)
+              if (!result) return lead // was not in this batch (already successful)
+              return { ...lead, status: result.status === "success" ? "success" : "failed", message: result.message }
+            }))
             setSendStatus("success")
             setProgress(null)
           }
@@ -227,6 +240,7 @@ export default function ProtectedArea() {
           durationMinutes,
           parallelCount: 1,
           eventBody: signature ? `${eventBody}<br>${signature}` : eventBody,
+          eventSubject,
         }),
       })
       if (!response.ok) throw new Error((await response.text()) || "Fehler beim Test-Versand")
@@ -265,6 +279,10 @@ export default function ProtectedArea() {
   const slotMs = durationMinutes * 60 * 1000
   const availableSlots = slotMs > 0 && rangeMs > 0 ? Math.floor(rangeMs / slotMs) : 0
   const schedulableLeads = availableSlots * parallelCount
+  // In retry mode only count leads that haven't succeeded yet
+  const pendingLeadsCount = leads.some((l) => l.status === "failed")
+    ? leads.filter((l) => l.status === "failed").length
+    : leads.length
 
   return (
     <section className="w-full space-y-5">
@@ -377,7 +395,7 @@ export default function ProtectedArea() {
               onChange={(e) => {
                 const id = parseInt(e.target.value)
                 const t = templates.find((t) => t.id === id)
-                if (t) { setSelectedTemplateId(t.id); setTemplateName(t.name); setEventBody(t.html) }
+                if (t) { setSelectedTemplateId(t.id); setTemplateName(t.name); setEventBody(t.html); setEventSubject(t.subject || "Termin mit {{vorname}} {{nachname}}") }
               }}
             >
               {templates.length === 0 && <option value="" className="bg-gray-800">— Keine Vorlagen —</option>}
@@ -385,7 +403,7 @@ export default function ProtectedArea() {
             </select>
             <button
               type="button"
-              onClick={() => { setSelectedTemplateId(null); setTemplateName("Neue Vorlage"); setEventBody("<p>Hallo {{vorname}},</p>") }}
+              onClick={() => { setSelectedTemplateId(null); setTemplateName("Neue Vorlage"); setEventBody("<p>Hallo {{vorname}},</p>"); setEventSubject("Hier Terminbetreff eingeben") }}
               className="rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 px-3 py-2 text-sm text-gray-300 transition-colors"
             >
               + Neu
@@ -408,6 +426,17 @@ export default function ProtectedArea() {
                 Löschen
               </button>
             )}
+          </div>
+
+          <div className="mb-3">
+            <label className={label}>Terminbetreff <span className="ml-1 text-xs font-normal text-gray-500">Platzhalter möglich</span></label>
+            <input
+              type="text"
+              value={eventSubject}
+              onChange={(e) => setEventSubject(e.target.value)}
+              placeholder="Termin mit {{vorname}} {{nachname}}"
+              className={input}
+            />
           </div>
 
           <RichTextEditor value={eventBody} onChange={setEventBody} />
@@ -454,7 +483,12 @@ export default function ProtectedArea() {
           disabled={sendStatus === "sending" || leads.length === 0}
           className={`${btnPrimary} text-base px-6 py-3`}
         >
-          {sendStatus === "sending" ? "Wird versendet…" : `Termine versenden (${Math.min(leads.length, schedulableLeads)} von ${leads.length} Leads)`}
+          {sendStatus === "sending"
+            ? "Wird versendet…"
+            : leads.some((l) => l.status === "failed")
+              ? `Fehlgeschlagene erneut senden (${pendingLeadsCount} Leads)`
+              : `Termine versenden (${Math.min(pendingLeadsCount, schedulableLeads)} von ${pendingLeadsCount} Leads)`
+          }
         </button>
         {sendStatus === "success" && <p className="text-green-400 text-sm">Einladungen wurden versendet.</p>}
         {sendStatus === "failed" && <p className="text-red-400 text-sm">Versand fehlgeschlagen: {error}</p>}
@@ -498,7 +532,7 @@ export default function ProtectedArea() {
             <div className="bg-white/5 rounded-xl p-4 space-y-2 text-sm text-gray-300">
               <div className="flex justify-between">
                 <span className="text-gray-400">Anzahl Termine</span>
-                <span className="font-semibold text-white">{Math.min(leads.length, schedulableLeads)}</span>
+                <span className="font-semibold text-white">{Math.min(pendingLeadsCount, schedulableLeads)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-400">Zeitfenster Start</span>
@@ -516,8 +550,8 @@ export default function ProtectedArea() {
                 <span className="text-gray-400">Parallelität</span>
                 <span className="font-semibold text-white">{parallelCount} parallel</span>
               </div>
-              {leads.length > schedulableLeads && (
-                <p className="text-orange-400 pt-1">{leads.length - schedulableLeads} Lead(s) erhalten keinen Slot und werden übersprungen.</p>
+              {pendingLeadsCount > schedulableLeads && (
+                <p className="text-orange-400 pt-1">{pendingLeadsCount - schedulableLeads} Lead(s) erhalten keinen Slot und werden übersprungen.</p>
               )}
             </div>
 

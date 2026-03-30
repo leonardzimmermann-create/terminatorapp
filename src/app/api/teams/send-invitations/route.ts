@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
-type Lead = { anrede: string; vorname: string; nachname: string; email: string; firmenname: string; var1?: string; var2?: string; var3?: string }
+type Lead = { id?: number; anrede: string; vorname: string; nachname: string; email: string; firmenname: string; var1?: string; var2?: string; var3?: string }
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -27,6 +27,7 @@ export async function POST(req: NextRequest) {
   const durationMinutes = Number(body.durationMinutes)
   const parallelCount = Number(body.parallelCount)
   const eventBody = typeof body.eventBody === 'string' ? body.eventBody : 'Ein Teams-Termin ist angefragt.'
+  const eventSubject = typeof body.eventSubject === 'string' && body.eventSubject.trim() ? body.eventSubject : 'Hier Terminbetreff eingeben'
 
   if (isNaN(windowStart.getTime()) || isNaN(windowEnd.getTime()) || windowEnd <= windowStart) {
     return new Response(JSON.stringify({ error: 'Ungültiges Zeitfenster' }), { status: 400 })
@@ -56,7 +57,7 @@ export async function POST(req: NextRequest) {
 
   const stream = new ReadableStream({
     async start(controller) {
-      const results: Array<{ email: string; status: 'success' | 'failed'; message: string }> = []
+      const results: Array<{ id?: number; email: string; status: 'success' | 'failed'; message: string }> = []
       const sentInvitations: Array<{ eventId: string; leadEmail: string; leadName: string; slotStart: Date; slotEnd: Date }> = []
       let sent = 0
 
@@ -68,6 +69,16 @@ export async function POST(req: NextRequest) {
 
         try {
           if (!lead.email || !lead.vorname || !lead.nachname) throw new Error('Ungültiger Lead')
+
+          const personalizedSubject = eventSubject
+            .replace(/\{\{anrede\}\}/g, lead.anrede)
+            .replace(/\{\{vorname\}\}/g, lead.vorname)
+            .replace(/\{\{nachname\}\}/g, lead.nachname)
+            .replace(/\{\{email\}\}/g, lead.email)
+            .replace(/\{\{firmenname\}\}/g, lead.firmenname)
+            .replace(/\{\{var1\}\}/g, lead.var1 ?? '')
+            .replace(/\{\{var2\}\}/g, lead.var2 ?? '')
+            .replace(/\{\{var3\}\}/g, lead.var3 ?? '')
 
           const personalizedBody = eventBody
             .replace(/\{\{anrede\}\}/g, lead.anrede)
@@ -82,7 +93,7 @@ export async function POST(req: NextRequest) {
             .replace(/<p style="margin:0;padding:0;"><\/p>/gi, '<p style="margin:0;padding:0;"><br></p>')
 
           const event = {
-            subject: `Termin mit ${lead.vorname} ${lead.nachname}`,
+            subject: personalizedSubject,
             body: { contentType: 'HTML', content: personalizedBody },
             start: { dateTime: slotStart.toISOString().slice(0, 19), timeZone: 'UTC' },
             end: { dateTime: slotEnd.toISOString().slice(0, 19), timeZone: 'UTC' },
@@ -103,9 +114,9 @@ export async function POST(req: NextRequest) {
 
           const created = await response.json()
           sentInvitations.push({ eventId: created.id, leadEmail: lead.email, leadName: `${lead.vorname} ${lead.nachname}`, slotStart, slotEnd })
-          results.push({ email: lead.email, status: 'success', message: 'Einladung versendet' })
+          results.push({ id: lead.id, email: lead.email, status: 'success', message: 'Einladung versendet' })
         } catch (err) {
-          results.push({ email: lead.email, status: 'failed', message: (err as Error).message })
+          results.push({ id: lead.id, email: lead.email, status: 'failed', message: (err as Error).message })
         }
 
         sent++
@@ -113,7 +124,7 @@ export async function POST(req: NextRequest) {
       }
 
       for (const overflowLead of overflowLeads) {
-        results.push({ email: overflowLead.email, status: 'failed', message: 'Kein Termin-Slot mehr verfügbar' })
+        results.push({ id: overflowLead.id, email: overflowLead.email, status: 'failed', message: 'Kein Termin-Slot mehr verfügbar' })
         sent++
         controller.enqueue(emit({ type: 'progress', sent, total }))
       }

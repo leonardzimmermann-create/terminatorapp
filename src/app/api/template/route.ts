@@ -15,7 +15,7 @@ export async function GET() {
   const templates = await prisma.userTemplate.findMany({
     where: { email },
     orderBy: { updatedAt: 'desc' },
-    select: { id: true, name: true, html: true },
+    select: { id: true, name: true, html: true, subject: true },
   })
   return NextResponse.json({ templates })
 }
@@ -29,11 +29,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Ungültige Anfrage' }, { status: 400 })
   }
 
+  const subject = typeof body.subject === 'string' ? body.subject : ''
+
   if (body.id) {
     // Update existing
     const updated = await prisma.userTemplate.updateMany({
       where: { id: body.id, email },
-      data: { name: body.name, html: body.html },
+      data: { name: body.name, html: body.html, subject },
     })
     if (updated.count === 0) return NextResponse.json({ error: 'Nicht gefunden' }, { status: 404 })
     const record = await prisma.userTemplate.findFirst({ where: { id: body.id, email } })
@@ -42,7 +44,7 @@ export async function POST(req: NextRequest) {
 
   // Create new
   const record = await prisma.userTemplate.create({
-    data: { email, name: body.name, html: body.html },
+    data: { email, name: body.name, html: body.html, subject },
   })
   return NextResponse.json({ template: record })
 }
