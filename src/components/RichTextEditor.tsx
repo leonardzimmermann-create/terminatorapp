@@ -156,6 +156,11 @@ export default function RichTextEditor({ value, onChange, showVariables = true }
 
         <div className="w-px bg-gray-300 mx-1" />
 
+        {btn(editor.isActive("bulletList"), () => editor.chain().focus().toggleBulletList().run(), "Aufzählung", <span>• Liste</span>)}
+        {btn(editor.isActive("orderedList"), () => editor.chain().focus().toggleOrderedList().run(), "Nummerierung", <span>1. Liste</span>)}
+
+        <div className="w-px bg-gray-300 mx-1" />
+
         {/* Farbe per HEX */}
         <div className="flex items-center gap-1">
           <input
@@ -264,7 +269,7 @@ export default function RichTextEditor({ value, onChange, showVariables = true }
       {/* Editor-Fläche */}
       <EditorContent
         editor={editor}
-        className="min-h-[120px] p-3 focus-within:outline-none"
+        className="min-h-[120px] p-3 focus-within:outline-none [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5"
       />
     </div>
   )
