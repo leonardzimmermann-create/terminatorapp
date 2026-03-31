@@ -39,6 +39,9 @@ export async function POST(req: NextRequest) {
     return new Response(JSON.stringify({ error: 'Ungültige Parallelität' }), { status: 400 })
   }
 
+  const toBerlinDateTime = (date: Date) =>
+    date.toLocaleString('sv-SE', { timeZone: 'Europe/Berlin' }).replace(' ', 'T')
+
   const slotLengthMs = durationMinutes * 60 * 1000
   const totalRangeMs = windowEnd.getTime() - windowStart.getTime()
   const availableSlots = Math.max(0, Math.floor(totalRangeMs / slotLengthMs))
@@ -95,8 +98,8 @@ export async function POST(req: NextRequest) {
           const event = {
             subject: personalizedSubject,
             body: { contentType: 'HTML', content: personalizedBody },
-            start: { dateTime: slotStart.toISOString().slice(0, 19), timeZone: 'UTC' },
-            end: { dateTime: slotEnd.toISOString().slice(0, 19), timeZone: 'UTC' },
+            start: { dateTime: toBerlinDateTime(slotStart), timeZone: 'Europe/Berlin' },
+            end: { dateTime: toBerlinDateTime(slotEnd), timeZone: 'Europe/Berlin' },
             location: { displayName: 'Online (Teams Meeting)' },
             attendees: [{ emailAddress: { address: lead.email, name: `${lead.vorname} ${lead.nachname}` }, type: 'required' }],
             isOnlineMeeting: true,
