@@ -68,7 +68,7 @@ export default function Home() {
           )}
         </div>
 
-        <p className="text-center text-gray-600 text-xs mt-6">© 2025 Smartflow Consulting</p>
+        <p className="text-center text-gray-600 text-xs mt-6">2026 Sales Culture</p>
       </div>
     </main>
   )

@@ -35,6 +35,7 @@ export default function ProtectedArea() {
   const [sendStatus, setSendStatus] = useState<SendStatus>("idle")
   const [showConfirm, setShowConfirm] = useState(false)
   const [progress, setProgress] = useState<{ sent: number; total: number } | null>(null)
+  const [sendStartTime, setSendStartTime] = useState<number | null>(null)
   const [testEmail, setTestEmail] = useState<string>("")
   const [testStatus, setTestStatus] = useState<"idle" | "sending" | "success" | "failed">("idle")
   const [testMessage, setTestMessage] = useState<string | null>(null)
@@ -53,6 +54,14 @@ export default function ProtectedArea() {
   const [durationMinutes, setDurationMinutes] = useState<number>(30)
   const [parallelCount, setParallelCount] = useState<number>(1)
   const [eventBody, setEventBody] = useState<string>("<p>Hallo {{vorname}},</p><p>ich möchte Sie zu einem Teams-Termin einladen.</p>")
+  const [quota, setQuota] = useState<{ sentCount: number; sendLimit: number | null; remaining: number | null } | null>(null)
+
+  useEffect(() => {
+    fetch("/api/domain-quota")
+      .then((r) => r.json())
+      .then((d) => { if (d.sendLimit !== undefined) setQuota(d) })
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     fetch("/api/signature")
@@ -172,7 +181,7 @@ export default function ProtectedArea() {
     const hasFailedLeads = leads.some((l) => l.status === "failed")
     const leadsToSend = hasFailedLeads ? leads.filter((l) => l.status === "failed") : leads
 
-    setSendStatus("sending"); setError(null); setProgress({ sent: 0, total: Math.min(leadsToSend.length, schedulableLeads) })
+    setSendStatus("sending"); setError(null); setProgress({ sent: 0, total: Math.min(leadsToSend.length, schedulableLeads) }); setSendStartTime(Date.now())
     try {
       const response = await fetch("/api/teams/send-invitations", {
         method: "POST",
@@ -287,9 +296,42 @@ export default function ProtectedArea() {
   return (
     <section className="w-full space-y-5">
 
-      <a href="/app/versand-uebersicht" className="inline-flex items-center gap-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 px-4 py-2 text-sm text-gray-300 font-medium transition-colors">
-        Versand-Übersicht →
-      </a>
+      <div className="flex items-center gap-4 flex-wrap justify-between">
+        <a href="/app/versand-uebersicht" className="inline-flex items-center gap-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 px-4 py-2 text-sm text-gray-300 font-medium transition-colors">
+          Versand-Übersicht →
+        </a>
+
+        {quota && quota.sendLimit !== null && (
+          <div className="flex items-center gap-4 bg-white/5 border border-white/10 rounded-xl px-4 py-2">
+            <div className="text-center">
+              <p className="text-xs text-gray-400 mb-0.5">Versendet</p>
+              <p className={`text-sm font-semibold ${quota.sentCount >= quota.sendLimit ? "text-red-400" : "text-gray-200"}`}>
+                {quota.sentCount}
+              </p>
+            </div>
+            <div className="w-px h-8 bg-white/10" />
+            <div className="text-center">
+              <p className="text-xs text-gray-400 mb-0.5">Verbleibend</p>
+              <p className={`text-sm font-semibold ${quota.remaining !== null && quota.remaining <= 0 ? "text-red-400" : quota.remaining !== null && quota.remaining < 10 ? "text-orange-400" : "text-green-400"}`}>
+                {quota.remaining !== null && quota.remaining <= 0 ? "Limit erreicht" : quota.remaining}
+              </p>
+            </div>
+            <div className="w-16">
+              <div className="h-1 w-full bg-white/10 rounded-full">
+                {(() => {
+                  const pct = Math.min(100, Math.round((quota.sentCount / quota.sendLimit!) * 100))
+                  return (
+                    <div
+                      className={`h-1 rounded-full ${pct >= 100 ? "bg-red-500" : pct >= 80 ? "bg-orange-400" : "bg-blue-500"}`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  )
+                })()}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* CSV Upload */}
       <div className={card}>
@@ -380,7 +422,7 @@ export default function ProtectedArea() {
         {leads.length > 0 && availableSlots > 0 && (
           <p className="text-sm text-blue-400">
             Im Zeitfenster passen <strong>{availableSlots} Slot(s)</strong> × {parallelCount} Parallelität = <strong>{schedulableLeads} Termin(e)</strong>.{" "}
-            {leads.length > schedulableLeads && <span className="text-orange-400">{leads.length - schedulableLeads} Lead(s) bleiben ohne Slot.</span>}
+            {pendingLeadsCount > schedulableLeads && <span className="text-orange-400">{pendingLeadsCount - schedulableLeads} Lead(s) bleiben ohne Slot.</span>}
           </p>
         )}
 
@@ -503,22 +545,49 @@ export default function ProtectedArea() {
               <p className="text-white text-xl font-semibold mb-1">Termine werden versendet…</p>
               <p className="text-gray-400 text-sm mb-5">Bitte nicht schließen oder wegnavigieren.</p>
 
-              {progress && (
-                <>
-                  <div className="flex justify-between text-sm text-gray-300 mb-2">
-                    <span>{progress.sent} von {progress.total} versendet</span>
-                    <span className="font-semibold text-blue-400">
-                      {Math.round((progress.sent / progress.total) * 100)}%
-                    </span>
-                  </div>
-                  <div className="w-full bg-white/10 rounded-full h-3 overflow-hidden">
-                    <div
-                      className="h-3 rounded-full bg-blue-600 transition-all duration-300"
-                      style={{ width: `${(progress.sent / progress.total) * 100}%` }}
-                    />
-                  </div>
-                </>
-              )}
+              {progress && (() => {
+                const remaining = progress.total - progress.sent
+                let etaText = ""
+                const AVG_DELAY = 9.5
+                if (remaining > 0) {
+                  let etaSec: number
+                  if (progress.sent > 0 && sendStartTime) {
+                    const elapsed = (Date.now() - sendStartTime) / 1000
+                    // The delay after the last send is currently running but not yet in elapsed,
+                    // so add the average delay to get an accurate per-invite rate.
+                    const adjustedElapsed = elapsed + (remaining > 0 ? AVG_DELAY : 0)
+                    const secPerInvite = adjustedElapsed / progress.sent
+                    etaSec = Math.round(secPerInvite * remaining)
+                  } else {
+                    etaSec = Math.round(remaining * (AVG_DELAY + 1))
+                  }
+                  if (etaSec >= 60) {
+                    const m = Math.floor(etaSec / 60)
+                    const s = etaSec % 60
+                    etaText = `ca. ${m} Min. ${s} Sek. verbleibend`
+                  } else {
+                    etaText = `ca. ${etaSec} Sek. verbleibend`
+                  }
+                }
+                return (
+                  <>
+                    <div className="flex justify-between text-sm text-gray-300 mb-2">
+                      <span>{progress.sent} von {progress.total} versendet</span>
+                      <span className="font-semibold text-blue-400">
+                        {Math.round((progress.sent / progress.total) * 100)}%
+                      </span>
+                    </div>
+                    <div className="w-full bg-white/10 rounded-full h-3 overflow-hidden mb-3">
+                      <div
+                        className="h-3 rounded-full bg-blue-600 transition-all duration-300"
+                        style={{ width: `${(progress.sent / progress.total) * 100}%` }}
+                      />
+                    </div>
+                    {etaText && <p className="text-blue-400 text-sm font-medium mb-2">{etaText}</p>}
+                    <p className="text-gray-500 text-xs">Der Versand läuft absichtlich langsam, um das Spam-Risiko zu reduzieren.</p>
+                  </>
+                )
+              })()}
             </div>
           </div>
         </div>
@@ -558,7 +627,7 @@ export default function ProtectedArea() {
             <div>
               <p className="text-xs text-gray-400 mb-2 uppercase tracking-wide">Vorschau Einladungstext</p>
               <div
-                className="bg-white rounded-xl p-4 text-gray-900 text-base max-h-[500px] overflow-y-auto"
+                className="bg-white rounded-xl p-4 text-gray-900 text-base max-h-[500px] overflow-y-auto [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5"
                 dangerouslySetInnerHTML={{ __html: (signature ? `${eventBody}<br>${signature}` : eventBody)
                   .replace(/<p>/gi, '<p style="margin:0;padding:0;">')
                   .replace(/<p style="margin:0;padding:0;"><\/p>/gi, '<p style="margin:0;padding:0;"><br></p>') }}
