@@ -122,3 +122,11 @@ model BlacklistEntry {
   email     String   @unique
   createdAt DateTime @default(now())
 }
+
+model DomainLimit {
+  id                    Int      @id @default(autoincrement())
+  domain                String   @unique
+  sendLimit             Int
+  sharepointBlacklistUrl String?
+  createdAt             DateTime @default(now())
+}
