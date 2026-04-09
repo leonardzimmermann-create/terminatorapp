@@ -130,3 +130,13 @@ model DomainLimit {
   sharepointBlacklistUrl String?
   createdAt             DateTime @default(now())
 }
+
+model BlacklistDomain {
+  id            Int      @id @default(autoincrement())
+  customerDomain String
+  blockedDomain  String
+  updatedAt     DateTime @updatedAt
+
+  @@unique([customerDomain, blockedDomain])
+  @@index([customerDomain])
+}

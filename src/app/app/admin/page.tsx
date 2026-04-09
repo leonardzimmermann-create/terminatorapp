@@ -10,10 +10,23 @@ export default async function AdminPage() {
   const session = await getServerSession(authOptions)
   if (!session?.user?.email || session.user.email !== ADMIN_EMAIL) redirect('/app')
 
-  const [loginEvents, blacklist] = await Promise.all([
+  const [loginEvents, blacklist, domainLimitsRaw] = await Promise.all([
     prisma.loginEvent.findMany({ orderBy: { createdAt: 'asc' } }),
     prisma.blacklistEntry.findMany({ orderBy: { createdAt: 'desc' } }),
+    prisma.domainLimit.findMany({ orderBy: { domain: 'asc' } }),
   ])
+
+  const domainLimits = await Promise.all(
+    domainLimitsRaw.map(async (l) => {
+      const [sentCount, blacklistCount] = await Promise.all([
+        prisma.sentInvitation.count({
+          where: { sendLog: { userEmail: { endsWith: `@${l.domain}` } } },
+        }),
+        prisma.blacklistDomain.count({ where: { customerDomain: l.domain } }),
+      ])
+      return { ...l, sentCount, blacklistCount }
+    })
+  )
 
   const statsMap = new Map<string, { userName: string | null; firstLogin: Date; lastLogin: Date; count: number }>()
   for (const e of loginEvents) {
@@ -48,7 +61,7 @@ export default async function AdminPage() {
           ← Zurück zur Versand-Übersicht
         </a>
 
-        <AdminPanel userStats={userStats} blacklist={blacklist} />
+        <AdminPanel userStats={userStats} blacklist={blacklist} domainLimits={domainLimits} />
       </div>
     </main>
   )

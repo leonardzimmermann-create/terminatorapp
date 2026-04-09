@@ -51,8 +51,51 @@ export async function POST(req: NextRequest) {
   }
 
   const maxLeads = availableSlots * parallelCount
-  const meetingLeads = leads.slice(0, maxLeads)
-  const overflowLeads = leads.slice(maxLeads)
+
+  // Domain-Limit prüfen
+  const userEmail = session.user?.email ?? ''
+  const userDomain = userEmail.split('@')[1] ?? ''
+  const domainLimit = userDomain
+    ? await prisma.domainLimit.findUnique({ where: { domain: userDomain } })
+    : null
+
+  let domainLimitReached = false
+  let allowedByDomain = maxLeads
+
+  if (domainLimit) {
+    const alreadySent = await prisma.sentInvitation.count({
+      where: { sendLog: { userEmail: { endsWith: `@${userDomain}` } } },
+    })
+    const remaining = domainLimit.sendLimit - alreadySent
+    if (remaining <= 0) {
+      domainLimitReached = true
+      allowedByDomain = 0
+    } else {
+      allowedByDomain = Math.min(maxLeads, remaining)
+    }
+  }
+
+  // Blacklist aus DB laden (täglich via Power Automate synchronisiert)
+  const blacklistEntries = userDomain
+    ? await prisma.blacklistDomain.findMany({ where: { customerDomain: userDomain }, select: { blockedDomain: true } })
+    : []
+  const blacklistedDomains = new Set(blacklistEntries.map((e) => e.blockedDomain))
+
+  // Leads in erlaubte / blacklisted / overflow aufteilen
+  const allowedLeads: Lead[] = []
+  const blacklistedLeads: Lead[] = []
+  for (const lead of leads) {
+    const leadDomain = lead.email.split('@')[1]?.toLowerCase() ?? ''
+    if (blacklistedDomains.has(leadDomain)) {
+      blacklistedLeads.push(lead)
+    } else {
+      allowedLeads.push(lead)
+    }
+  }
+
+  const sliceLimit = domainLimitReached ? 0 : allowedByDomain
+  const meetingLeads = allowedLeads.slice(0, sliceLimit)
+  const overflowLeads = allowedLeads.slice(sliceLimit)
   const total = leads.length
 
   const encoder = new TextEncoder()
@@ -124,10 +167,26 @@ export async function POST(req: NextRequest) {
 
         sent++
         controller.enqueue(emit({ type: 'progress', sent, total }))
+
+        if (index < meetingLeads.length - 1) {
+          const delayMs = (7 + Math.random() * 5) * 1000
+          await new Promise((resolve) => setTimeout(resolve, delayMs))
+        }
       }
 
+      const overflowMessage = domainLimitReached
+        ? `Domain-Sendelimit erreicht (max. ${domainLimit!.sendLimit} Termine für ${userDomain})`
+        : 'Kein Termin-Slot mehr verfügbar'
+
       for (const overflowLead of overflowLeads) {
-        results.push({ id: overflowLead.id, email: overflowLead.email, status: 'failed', message: 'Kein Termin-Slot mehr verfügbar' })
+        results.push({ id: overflowLead.id, email: overflowLead.email, status: 'failed', message: overflowMessage })
+        sent++
+        controller.enqueue(emit({ type: 'progress', sent, total }))
+      }
+
+      for (const lead of blacklistedLeads) {
+        const leadDomain = lead.email.split('@')[1] ?? ''
+        results.push({ id: lead.id, email: lead.email, status: 'failed', message: `Domain gesperrt (Blacklist): ${leadDomain}` })
         sent++
         controller.enqueue(emit({ type: 'progress', sent, total }))
       }

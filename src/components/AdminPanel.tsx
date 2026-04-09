@@ -22,7 +22,7 @@ type DomainLimit = {
   domain: string
   sendLimit: number
   sentCount: number
-  sharepointBlacklistUrl: string | null
+  blacklistCount: number
   createdAt: Date
 }
 
@@ -45,8 +45,6 @@ export default function AdminPanel({
   const [newLimit, setNewLimit] = useState(100)
   const [addingDomain, setAddingDomain] = useState(false)
   const [domainError, setDomainError] = useState("")
-  const [editingUrl, setEditingUrl] = useState<Record<string, string>>({})
-  const [savingUrl, setSavingUrl] = useState<Record<string, boolean>>({})
 
   const isBlocked = (email: string) => blacklist.some((w) => w.email === email)
 
@@ -115,22 +113,6 @@ export default function AdminPanel({
     if (res.ok) {
       setDomainLimits((prev) => prev.filter((d) => d.domain !== domain))
     }
-  }
-
-  const saveSharepointUrl = async (domain: string) => {
-    setSavingUrl((prev) => ({ ...prev, [domain]: true }))
-    const url = editingUrl[domain] ?? ""
-    const res = await fetch("/api/admin/domain-limits", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ domain, sharepointBlacklistUrl: url.trim() || null }),
-    })
-    if (res.ok) {
-      setDomainLimits((prev) =>
-        prev.map((d) => d.domain === domain ? { ...d, sharepointBlacklistUrl: url.trim() || null } : d)
-      )
-    }
-    setSavingUrl((prev) => ({ ...prev, [domain]: false }))
   }
 
   const fmt = (d: Date) =>
@@ -290,7 +272,7 @@ export default function AdminPanel({
                   <th className="px-4 py-3 font-medium text-right">Limit</th>
                   <th className="px-4 py-3 font-medium text-right">Versendet</th>
                   <th className="px-4 py-3 font-medium text-right">Verbleibend</th>
-                  <th className="px-4 py-3 font-medium">Blacklist SharePoint-Link</th>
+                  <th className="px-4 py-3 font-medium text-center">Blacklist</th>
                   <th className="px-4 py-3"></th>
                 </tr>
               </thead>
@@ -316,26 +298,15 @@ export default function AdminPanel({
                       <td className={`px-4 py-3 text-right font-semibold ${remaining <= 0 ? "text-red-400" : remaining < 10 ? "text-orange-400" : "text-green-400"}`}>
                         {remaining <= 0 ? "Limit erreicht" : remaining}
                       </td>
-                      <td className="px-4 py-3 min-w-[280px]">
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="url"
-                            placeholder="https://..."
-                            value={editingUrl[d.domain] ?? (d.sharepointBlacklistUrl || "")}
-                            onChange={(e) => setEditingUrl((prev) => ({ ...prev, [d.domain]: e.target.value }))}
-                            onKeyDown={(e) => e.key === "Enter" && saveSharepointUrl(d.domain)}
-                            className="flex-1 rounded-lg bg-white/5 border border-white/10 px-3 py-1.5 text-xs text-gray-300 placeholder-gray-600 focus:outline-none focus:border-blue-500 min-w-0"
-                          />
-                          <button
-                            onClick={() => saveSharepointUrl(d.domain)}
-                            disabled={savingUrl[d.domain]}
-                            className="shrink-0 text-xs px-2.5 py-1.5 rounded-lg bg-blue-600/20 text-blue-400 border border-blue-500/30 hover:bg-blue-600/40 disabled:opacity-40 transition-colors"
-                          >
-                            {savingUrl[d.domain] ? "…" : "Speichern"}
-                          </button>
-                        </div>
-                        {d.sharepointBlacklistUrl && !(editingUrl[d.domain] !== undefined && editingUrl[d.domain] !== d.sharepointBlacklistUrl) && (
-                          <p className="text-xs text-green-400 mt-1">✓ Link hinterlegt</p>
+                      <td className="px-4 py-3 text-center">
+                        {d.blacklistCount > 0 ? (
+                          <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg bg-green-600/20 text-green-400 border border-green-500/30 font-medium">
+                            Ja ({d.blacklistCount})
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg bg-white/5 text-gray-500 border border-white/10">
+                            Nein
+                          </span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-right">
