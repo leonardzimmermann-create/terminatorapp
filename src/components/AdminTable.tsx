@@ -21,6 +21,9 @@ type Log = {
   acceptedCount: number | null
   declinedCount: number | null
   tentativeCount: number | null
+  subject: string | null
+  eventBody: string | null
+  signature: string | null
   invitations: Invitation[]
 }
 
@@ -40,6 +43,7 @@ export default function AdminTable({ logs: initialLogs, currentUserEmail }: { lo
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState("")
   const [userSearch, setUserSearch] = useState("")
+  const [messagePopup, setMessagePopup] = useState<Log | null>(null)
 
   const isAdmin = currentUserEmail === "leonard.zimmermann@smartflow-consulting.com"
   const didAutoRefresh = useRef(false)
@@ -174,6 +178,7 @@ export default function AdminTable({ logs: initialLogs, currentUserEmail }: { lo
               <th className="px-4 py-3 font-medium text-right text-green-400">Angenommen</th>
               <th className="px-4 py-3 font-medium text-right text-red-400">Abgelehnt</th>
               <th className="px-4 py-3 font-medium text-right text-yellow-400">Vorläufig</th>
+              <th className="px-4 py-3 w-8"></th>
             </tr>
           </thead>
           <tbody>
@@ -205,6 +210,17 @@ export default function AdminTable({ logs: initialLogs, currentUserEmail }: { lo
                     </td>
                     <td className="px-4 py-3 text-right text-red-400">{log.declinedCount ?? "–"}</td>
                     <td className="px-4 py-3 text-right text-yellow-400">{log.tentativeCount ?? "–"}</td>
+                    <td className="px-4 py-3 text-right">
+                      {log.subject && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setMessagePopup(log) }}
+                          className="text-gray-400 hover:text-blue-400 transition-colors"
+                          title="Nachricht anzeigen"
+                        >
+                          ✉
+                        </button>
+                      )}
+                    </td>
                   </tr>
                   {isExpanded && (
                     <tr key={`${log.id}-detail`} className="border-t border-white/5">
@@ -249,6 +265,46 @@ export default function AdminTable({ logs: initialLogs, currentUserEmail }: { lo
           </tbody>
         </table>
       </div>
+
+      {/* Message Popup */}
+      {messagePopup && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          onClick={() => setMessagePopup(null)}
+        >
+          <div
+            className="bg-gray-900 border border-white/10 rounded-2xl w-full max-w-2xl max-h-[80vh] overflow-y-auto shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
+              <h2 className="text-white font-bold text-lg">Versendete Nachricht</h2>
+              <button onClick={() => setMessagePopup(null)} className="text-gray-400 hover:text-white text-xl leading-none">✕</button>
+            </div>
+            <div className="px-6 py-5 space-y-5">
+              <div>
+                <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Betreff</p>
+                <p className="text-white font-medium">{messagePopup.subject}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Nachricht</p>
+                <div
+                  className="bg-white rounded-xl p-4 text-gray-900 text-sm [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5"
+                  dangerouslySetInnerHTML={{ __html: messagePopup.eventBody ?? '' }}
+                />
+              </div>
+              {messagePopup.signature && (
+                <div>
+                  <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Signatur</p>
+                  <div
+                    className="bg-white rounded-xl p-4 text-gray-900 text-sm"
+                    dangerouslySetInnerHTML={{ __html: messagePopup.signature }}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

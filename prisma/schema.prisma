@@ -75,6 +75,9 @@ model SendLog {
   acceptedCount  Int?
   declinedCount  Int?
   tentativeCount Int?
+  subject        String?
+  eventBody      String?
+  signature      String?
   invitations    SentInvitation[]
 }
 

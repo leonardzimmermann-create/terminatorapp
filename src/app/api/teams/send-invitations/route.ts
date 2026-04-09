@@ -28,6 +28,8 @@ export async function POST(req: NextRequest) {
   const parallelCount = Number(body.parallelCount)
   const eventBody = typeof body.eventBody === 'string' ? body.eventBody : 'Ein Teams-Termin ist angefragt.'
   const eventSubject = typeof body.eventSubject === 'string' && body.eventSubject.trim() ? body.eventSubject : 'Hier Terminbetreff eingeben'
+  const signature = typeof body.signature === 'string' ? body.signature : ''
+  const fullEventBody = signature ? `${eventBody}<br>${signature}` : eventBody
 
   if (isNaN(windowStart.getTime()) || isNaN(windowEnd.getTime()) || windowEnd <= windowStart) {
     return new Response(JSON.stringify({ error: 'Ungültiges Zeitfenster' }), { status: 400 })
@@ -126,7 +128,7 @@ export async function POST(req: NextRequest) {
             .replace(/\{\{var2\}\}/g, lead.var2 ?? '')
             .replace(/\{\{var3\}\}/g, lead.var3 ?? '')
 
-          const personalizedBody = eventBody
+          const personalizedBody = fullEventBody
             .replace(/\{\{anrede\}\}/g, lead.anrede)
             .replace(/\{\{vorname\}\}/g, lead.vorname)
             .replace(/\{\{nachname\}\}/g, lead.nachname)
@@ -200,6 +202,9 @@ export async function POST(req: NextRequest) {
           totalLeads: leads.length,
           successCount,
           failedCount,
+          subject: eventSubject,
+          eventBody,
+          signature,
           invitations: { create: sentInvitations },
         },
       }).catch(() => {})

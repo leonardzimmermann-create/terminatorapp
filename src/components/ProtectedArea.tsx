@@ -192,8 +192,9 @@ export default function ProtectedArea() {
           windowEnd: end.toISOString(),
           durationMinutes,
           parallelCount,
-          eventBody: signature ? `${eventBody}<br>${signature}` : eventBody,
+          eventBody,
           eventSubject,
+          signature,
         }),
       })
       if (!response.ok) throw new Error((await response.text()) || "Fehler beim Versenden")
