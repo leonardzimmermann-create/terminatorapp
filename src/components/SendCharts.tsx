@@ -41,7 +41,7 @@ const BarTooltip = ({ active, payload, label }: TooltipProps) => {
 
 export default function SendCharts({ logs, isAdmin }: { logs: LogStat[]; isAdmin: boolean }) {
   const allDomains = useMemo(
-    () => [...new Set(logs.map((l) => l.userEmail.split("@")[1] ?? ""))].sort(),
+    () => Array.from(new Set(logs.map((l) => l.userEmail.split("@")[1] ?? ""))).sort(),
     [logs]
   )
 
@@ -61,7 +61,7 @@ export default function SendCharts({ logs, isAdmin }: { logs: LogStat[]; isAdmin
         const dm = monthDomainMap.get(month)!
         dm.set(domain, (dm.get(domain) ?? 0) + log.successCount)
       }
-      const keys = [...new Set(filteredLogs.map((l) => l.userEmail.split("@")[1] ?? ""))].sort()
+      const keys = Array.from(new Set(filteredLogs.map((l) => l.userEmail.split("@")[1] ?? ""))).sort()
       const data = Array.from(monthDomainMap.entries())
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([month, dm]) => {
@@ -73,7 +73,7 @@ export default function SendCharts({ logs, isAdmin }: { logs: LogStat[]; isAdmin
         })
       return { chartData: data, chartKeys: keys }
     } else {
-      const users = [...new Set(filteredLogs.map((l) => l.userEmail))].sort()
+      const users = Array.from(new Set(filteredLogs.map((l) => l.userEmail))).sort()
       const monthUserMap = new Map<string, Map<string, number>>()
       for (const log of filteredLogs) {
         const month = new Date(log.sentAt).toISOString().slice(0, 7)
