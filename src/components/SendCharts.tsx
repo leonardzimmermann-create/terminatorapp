@@ -182,7 +182,7 @@ export default function SendCharts({ logs, isAdmin }: { logs: LogStat[]; isAdmin
                 <Tooltip
                   contentStyle={{ backgroundColor: "#1f2937", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "12px", color: "#f3f4f6" }}
                   wrapperStyle={{ opacity: 1 }}
-                  formatter={(value: number) => [`${value} Termine`, ""]}
+                  formatter={(value) => [`${value} Termine`, ""]}
                 />
               </PieChart>
               <div className="flex flex-col gap-2 flex-1">
