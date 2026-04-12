@@ -17,8 +17,8 @@ const DOMAIN_COLORS = [
   "#06b6d4","#f97316","#ec4899","#14b8a6","#a855f7",
 ]
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const BarTooltip = ({ active, payload, label }: any) => {
+type TooltipProps = { active?: boolean; payload?: { dataKey: string; value: number; fill: string }[]; label?: string }
+const BarTooltip = ({ active, payload, label }: TooltipProps) => {
   if (!active || !payload?.length) return null
   const total = payload.reduce((s: number, p: { value: number }) => s + (p.value ?? 0), 0)
   return (
