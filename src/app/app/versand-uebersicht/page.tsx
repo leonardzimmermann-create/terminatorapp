@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import AdminTable from '@/components/AdminTable'
+import SendCharts from '@/components/SendCharts'
 
 export default async function AdminPage() {
   const session = await getServerSession(authOptions)
@@ -52,7 +53,10 @@ export default async function AdminPage() {
         {dbError ? (
           <div className="bg-red-900/30 border border-red-500/30 rounded-xl p-4 text-red-300 text-sm font-mono">{dbError}</div>
         ) : (
-          <AdminTable logs={logs} currentUserEmail={session.user.email} />
+          <>
+            <SendCharts logs={logs} isAdmin={isAdmin} />
+            <AdminTable logs={logs} currentUserEmail={session.user.email} />
+          </>
         )}
       </div>
     </main>

@@ -10,6 +10,10 @@ export default async function AdminPage() {
   const session = await getServerSession(authOptions)
   if (!session?.user?.email || session.user.email !== ADMIN_EMAIL) redirect('/app')
 
+  const now = new Date()
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+
   const [loginEvents, blacklist, domainLimitsRaw] = await Promise.all([
     prisma.loginEvent.findMany({ orderBy: { createdAt: 'asc' } }),
     prisma.blacklistEntry.findMany({ orderBy: { createdAt: 'desc' } }),
@@ -18,13 +22,14 @@ export default async function AdminPage() {
 
   const domainLimits = await Promise.all(
     domainLimitsRaw.map(async (l) => {
-      const [sentCount, blacklistCount] = await Promise.all([
+      const [sentCount, blacklistCount, userCount] = await Promise.all([
         prisma.sentInvitation.count({
-          where: { sendLog: { userEmail: { endsWith: `@${l.domain}` } } },
+          where: { sendLog: { userEmail: { endsWith: `@${l.domain}` }, sentAt: { gte: monthStart, lt: monthEnd } } },
         }),
         prisma.blacklistDomain.count({ where: { customerDomain: l.domain } }),
+        prisma.user.count({ where: { email: { endsWith: `@${l.domain}` } } }),
       ])
-      return { ...l, sentCount, blacklistCount }
+      return { ...l, sentCount, blacklistCount, userCount }
     })
   )
 

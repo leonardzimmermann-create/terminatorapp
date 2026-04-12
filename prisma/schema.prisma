@@ -130,6 +130,7 @@ model DomainLimit {
   id                    Int      @id @default(autoincrement())
   domain                String   @unique
   sendLimit             Int
+  userLimit             Int?
   sharepointBlacklistUrl String?
   createdAt             DateTime @default(now())
 }

@@ -3,8 +3,19 @@
 import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
 import RichTextEditor from "./RichTextEditor"
+import * as XLSX from "xlsx"
 
 const ADMIN_EMAIL = "leonard.zimmermann@smartflow-consulting.com"
+
+function downloadLeadTemplate() {
+  const ws = XLSX.utils.aoa_to_sheet([
+    ["Anrede", "Vorname", "Nachname", "Email", "Firmenname", "Variable 1", "Variable 2", "Variable 3"],
+  ])
+  ws["!cols"] = [{ wch: 10 }, { wch: 14 }, { wch: 16 }, { wch: 28 }, { wch: 22 }, { wch: 14 }, { wch: 14 }, { wch: 14 }]
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, "Leads")
+  XLSX.writeFile(wb, "Lead-Template.xlsx")
+}
 
 type Lead = {
   id: number
@@ -336,7 +347,21 @@ export default function ProtectedArea() {
 
       {/* CSV Upload */}
       <div className={card}>
-        <h2 className="text-lg font-bold text-white">Lead-Upload</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-bold text-white">Lead-Upload</h2>
+          <button
+            onClick={downloadLeadTemplate}
+            className="inline-flex items-center gap-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 px-4 py-2 text-white text-sm font-medium transition-colors"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect width="24" height="24" rx="3" fill="#1D6F42"/>
+              <path d="M13 3H7C5.9 3 5 3.9 5 5V19C5 20.1 5.9 21 7 21H17C18.1 21 19 20.1 19 19V9L13 3Z" fill="#1D6F42"/>
+              <path d="M13 3V9H19L13 3Z" fill="#185C37"/>
+              <path d="M9 13L11.5 17H12.5L15 13H13.8L12 16L10.2 13H9Z" fill="white"/>
+            </svg>
+            Lead-Template
+          </button>
+        </div>
         <div className="flex flex-col gap-4">
           <div>
             <p className="text-sm text-gray-400 mb-2">CSV-Datei mit Spalten: Anrede, Vorname, Nachname, Email, Firmenname, Variable 1, Variable 2, Variable 3</p>
@@ -444,13 +469,6 @@ export default function ProtectedArea() {
               {templates.length === 0 && <option value="" className="bg-gray-800">— Keine Vorlagen —</option>}
               {templates.map((t) => <option key={t.id} value={t.id} className="bg-gray-800">{t.name}</option>)}
             </select>
-            <button
-              type="button"
-              onClick={() => { setSelectedTemplateId(null); setTemplateName("Neue Vorlage"); setEventBody("<p>Hallo {{vorname}},</p>"); setEventSubject("Hier Terminbetreff eingeben") }}
-              className="rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 px-3 py-2 text-sm text-gray-300 transition-colors"
-            >
-              + Neu
-            </button>
           </div>
 
           <div className="flex gap-2 mb-3">
@@ -469,6 +487,13 @@ export default function ProtectedArea() {
                 Löschen
               </button>
             )}
+            <button
+              type="button"
+              onClick={() => { setSelectedTemplateId(null); setTemplateName("Neue Vorlage"); setEventBody("<p>Hallo {{vorname}},</p>"); setEventSubject("Hier Terminbetreff eingeben") }}
+              className="rounded-xl bg-blue-600 hover:bg-blue-500 px-4 py-2 text-white text-sm font-semibold transition-colors shadow-md"
+            >
+              + Neu
+            </button>
           </div>
 
           <div className="mb-3">

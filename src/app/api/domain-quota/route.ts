@@ -19,8 +19,12 @@ export async function GET() {
     return Response.json({ sentCount: 0, sendLimit: null, remaining: null })
   }
 
+  const now = new Date()
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+
   const sentCount = await prisma.sentInvitation.count({
-    where: { sendLog: { userEmail: { endsWith: `@${domain}` } } },
+    where: { sendLog: { userEmail: { endsWith: `@${domain}` }, sentAt: { gte: monthStart, lt: monthEnd } } },
   })
 
   const remaining = limit.sendLimit - sentCount

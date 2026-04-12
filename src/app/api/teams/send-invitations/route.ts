@@ -65,8 +65,11 @@ export async function POST(req: NextRequest) {
   let allowedByDomain = maxLeads
 
   if (domainLimit) {
+    const now = new Date()
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1)
     const alreadySent = await prisma.sentInvitation.count({
-      where: { sendLog: { userEmail: { endsWith: `@${userDomain}` } } },
+      where: { sendLog: { userEmail: { endsWith: `@${userDomain}` }, sentAt: { gte: monthStart, lt: monthEnd } } },
     })
     const remaining = domainLimit.sendLimit - alreadySent
     if (remaining <= 0) {

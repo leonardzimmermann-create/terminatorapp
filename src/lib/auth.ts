@@ -59,6 +59,19 @@ export const authOptions: NextAuthOptions = {
         const blocked = await prisma.blacklistEntry.findUnique({ where: { email: user.email } })
         if (blocked) return '/not-authorized'
 
+        // Seats-Check: nur für neue User (nicht bereits registrierte)
+        const domain = user.email.split('@')[1]
+        if (domain && domain !== ADMIN_EMAIL.split('@')[1]) {
+          const domainLimit = await prisma.domainLimit.findUnique({ where: { domain } })
+          if (domainLimit?.userLimit) {
+            const existingUser = await prisma.user.findUnique({ where: { email: user.email } })
+            if (!existingUser) {
+              const userCount = await prisma.user.count({ where: { email: { endsWith: `@${domain}` } } })
+              if (userCount >= domainLimit.userLimit) return '/seats-exceeded'
+            }
+          }
+        }
+
         // Upsert user in DB
         const dbUser = await prisma.user.upsert({
           where: { email: user.email },

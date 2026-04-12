@@ -85,7 +85,13 @@ export default function AdminTable({ logs: initialLogs, currentUserEmail }: { lo
   }
 
   const refreshAll: () => Promise<void> = async () => {
-    const ownLogs = logs.filter((l) => l.userEmail === currentUserEmail)
+    const now = new Date()
+    const ownLogs = logs.filter((l) => {
+      if (l.userEmail !== currentUserEmail) return false
+      // Skip runs where every slot lies in the past
+      if (l.invitations.length === 0) return true
+      return l.invitations.some((inv) => inv.slotStart && new Date(inv.slotStart) >= now)
+    })
     if (ownLogs.length === 0) return
     setRefreshing(true)
     try {
