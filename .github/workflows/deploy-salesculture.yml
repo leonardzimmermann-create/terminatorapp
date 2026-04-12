@@ -52,7 +52,7 @@ jobs:
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
-          app-name: 'terminatoranwendung-axf6e8dpc6f8cnc0'
+          app-name: 'TerminatorAnwendung'
           slot-name: 'Production'
           publish-profile: ${{ secrets.SALESCULTURE_PUBLISH_PROFILE }}
           package: .
