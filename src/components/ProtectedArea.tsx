@@ -53,6 +53,10 @@ export default function ProtectedArea() {
   const [signature, setSignature] = useState<string>("")
   const [sigSaveStatus, setSigSaveStatus] = useState<"idle" | "saving" | "saved" | "failed">("idle")
   const [tmplSaveStatus, setTmplSaveStatus] = useState<"idle" | "saving" | "saved" | "failed">("idle")
+  const [aiAnalysis, setAiAnalysis] = useState<{ motivation: string; suggestions: string[] } | null>(null)
+  const [checkedSuggestions, setCheckedSuggestions] = useState<boolean[]>([])
+  const [analyzing, setAnalyzing] = useState(false)
+  const resetAnalysis = () => { setAiAnalysis(null); setCheckedSuggestions([]) }
   const [templates, setTemplates] = useState<{ id: number; name: string; html: string; subject: string }[]>([])
   const [selectedTemplateId, setSelectedTemplateId] = useState<number | null>(null)
   const [templateName, setTemplateName] = useState<string>("")
@@ -111,6 +115,7 @@ export default function ProtectedArea() {
         })
         setSelectedTemplateId(data.template.id)
         setTmplSaveStatus("saved")
+        analyzeText(eventBody)
       } else {
         setTmplSaveStatus("failed")
       }
@@ -118,6 +123,23 @@ export default function ProtectedArea() {
       setTmplSaveStatus("failed")
     }
     setTimeout(() => setTmplSaveStatus("idle"), 2500)
+  }
+
+  const analyzeText = async (html: string) => {
+    setAnalyzing(true)
+    try {
+      const r = await fetch('/api/analyze-text', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ html, subject: eventSubject }),
+      })
+      const data = await r.json()
+      if (r.ok && data.suggestions) {
+        setAiAnalysis(data)
+        setCheckedSuggestions(new Array(data.suggestions.length).fill(false))
+      }
+    } catch {}
+    setAnalyzing(false)
   }
 
   const deleteTemplate = async () => {
@@ -489,7 +511,7 @@ export default function ProtectedArea() {
             )}
             <button
               type="button"
-              onClick={() => { setSelectedTemplateId(null); setTemplateName("Neue Vorlage"); setEventBody("<p>Hallo {{vorname}},</p>"); setEventSubject("Hier Terminbetreff eingeben") }}
+              onClick={() => { setSelectedTemplateId(null); setTemplateName("Neue Vorlage"); setEventBody("<p>Hallo {{vorname}},</p>"); setEventSubject("Hier Terminbetreff eingeben"); resetAnalysis() }}
               className="rounded-xl bg-blue-600 hover:bg-blue-500 px-4 py-2 text-white text-sm font-semibold transition-colors shadow-md"
             >
               + Neu
@@ -508,6 +530,63 @@ export default function ProtectedArea() {
           </div>
 
           <RichTextEditor value={eventBody} onChange={setEventBody} />
+
+          {/* KI-Analyse */}
+          {analyzing && (
+            <div className="mt-4 flex items-center gap-2 text-sm text-gray-400">
+              <svg className="animate-spin w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+              </svg>
+              KI analysiert deinen Text…
+            </div>
+          )}
+
+          {!analyzing && aiAnalysis && checkedSuggestions.length > 0 && checkedSuggestions.every(Boolean) && (
+            <div className="mt-4 bg-green-500/10 border border-green-500/30 rounded-2xl p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-base">🤖</span>
+                <span className="text-xs font-semibold text-gray-400 uppercase tracking-widest">KI-Schnellanalyse</span>
+              </div>
+              <div className="flex items-center gap-4">
+                <span className="text-3xl">🏆</span>
+                <div>
+                  <p className="text-green-400 font-bold text-lg">10 / 10 – Perfekt!</p>
+                  <p className="text-sm text-gray-300 mt-0.5">Dein Text ist bereit zum Einsatz. Viel Erfolg beim Versand!</p>
+                </div>
+              </div>
+            </div>
+          )}
+          {!analyzing && aiAnalysis && !(checkedSuggestions.length > 0 && checkedSuggestions.every(Boolean)) && (
+            <div className="mt-4 bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
+              <div className="flex items-center gap-2">
+                <span className="text-base">🤖</span>
+                <span className="text-xs font-semibold text-gray-400 uppercase tracking-widest">KI-Schnellanalyse</span>
+              </div>
+              <p className="text-sm text-gray-300">{aiAnalysis.motivation}</p>
+              <ul className="space-y-2">
+                {aiAnalysis.suggestions.map((s, i) => {
+                  const checked = checkedSuggestions[i]
+                  return (
+                    <li
+                      key={i}
+                      className="flex items-start gap-3 cursor-pointer group"
+                      onClick={() => setCheckedSuggestions(prev => prev.map((v, j) => j === i ? !v : v))}
+                    >
+                      <div className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${checked ? 'bg-green-500 border-green-500' : 'border-white/30 group-hover:border-white/60'}`}>
+                        {checked && (
+                          <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </div>
+                      <span className={`text-sm transition-colors ${checked ? 'text-green-400 line-through' : 'text-gray-300'}`}>{s}</span>
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
+          )}
         </div>
       </div>
 

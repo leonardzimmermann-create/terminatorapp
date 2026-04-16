@@ -8,12 +8,12 @@ export default function Home() {
   const { data: session, status } = useSession()
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-6">
+    <main className="min-h-screen flex flex-col items-center justify-center p-6">
       <div className="w-full max-w-md">
         {/* Logo / Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-blue-600 mb-4 shadow-lg">
-            <span className="text-3xl">⚡</span>
+          <div className="mb-4">
+            <img src="/LogoWeißSales.png" alt="Sales Culture Logo" className="w-48 h-auto mx-auto" />
           </div>
           <h1 className="text-4xl font-extrabold text-white tracking-tight">Terminator</h1>
           <p className="text-gray-400 mt-1 text-sm tracking-widest uppercase">Automatisierter Terminversand</p>

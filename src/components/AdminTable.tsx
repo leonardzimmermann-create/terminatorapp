@@ -45,7 +45,6 @@ export default function AdminTable({ logs: initialLogs, currentUserEmail }: { lo
   const [userSearch, setUserSearch] = useState("")
   const [messagePopup, setMessagePopup] = useState<Log | null>(null)
 
-  const isAdmin = currentUserEmail === "leonard.zimmermann@smartflow-consulting.com"
   const didAutoRefresh = useRef(false)
   const searchTerm = search.trim().toLowerCase()
   const userSearchTerm = userSearch.trim().toLowerCase()
@@ -133,15 +132,13 @@ export default function AdminTable({ logs: initialLogs, currentUserEmail }: { lo
           <p className="text-gray-500 text-xs whitespace-nowrap">Status aktualisieren gilt nur für eigene Versendungen.</p>
         </div>
         <div className="flex items-center gap-3 w-full sm:w-auto">
-          {isAdmin && (
-            <input
-              type="text"
-              placeholder="Nach User-E-Mail suchen…"
-              value={userSearch}
-              onChange={(e) => { setUserSearch(e.target.value); setCollapsed(new Set()) }}
-              className="rounded-xl bg-white/5 border border-white/10 px-4 py-2 text-sm text-gray-300 placeholder-gray-600 focus:outline-none focus:border-blue-500 w-56"
-            />
-          )}
+          <input
+            type="text"
+            placeholder="Nach User-E-Mail suchen…"
+            value={userSearch}
+            onChange={(e) => { setUserSearch(e.target.value); setCollapsed(new Set()) }}
+            className="rounded-xl bg-white/5 border border-white/10 px-4 py-2 text-sm text-gray-300 placeholder-gray-600 focus:outline-none focus:border-blue-500 w-56"
+          />
           <input
             type="text"
             placeholder="Nach Empfänger-E-Mail suchen…"

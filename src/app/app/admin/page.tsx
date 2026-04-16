@@ -50,7 +50,7 @@ export default async function AdminPage() {
     .sort((a, b) => b.lastLogin.getTime() - a.lastLogin.getTime())
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 px-4 py-8 sm:px-8">
+    <main className="min-h-screen px-4 py-8 sm:px-8">
       <div className="max-w-6xl mx-auto">
         <div className="flex items-center gap-3 mb-8">
           <div className="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-purple-600 shadow-lg">
