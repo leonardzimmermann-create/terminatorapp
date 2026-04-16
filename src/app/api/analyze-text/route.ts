@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 
-const AZURE_ENDPOINT = process.env.AZURE_OPENAI_ENDPOINT!
-const AZURE_KEY = process.env.AZURE_OPENAI_KEY!
+const AZURE_ENDPOINT = 'https://openai-terminator.openai.azure.com/openai/deployments/gpt-5.4-nano/chat/completions?api-version=2024-12-01-preview'
+const AZURE_KEY = '8WBhgNIiXU6YIiFEA8o0qJhBMzkzCZ30p3pDTcJQuBGUiZQt5b5gJQQJ99CDACPV0roXJ3w3AAABACOGghUS'
 
 function stripHtml(html: string): string {
   return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
