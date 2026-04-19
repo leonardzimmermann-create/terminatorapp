@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react"
 import RichTextEditor from "./RichTextEditor"
 import * as XLSX from "xlsx"
 
-const ADMIN_EMAIL = "leonard.zimmermann@smartflow-consulting.com"
+const ADMIN_EMAILS = ["leonard.zimmermann@smartflow-consulting.com", "rolf.zimmermann@smartflow-consulting.com"]
 
 function downloadLeadTemplate() {
   const ws = XLSX.utils.aoa_to_sheet([
@@ -40,7 +40,7 @@ const btnPrimary = "rounded-xl bg-blue-600 hover:bg-blue-500 px-5 py-2.5 text-wh
 
 export default function ProtectedArea() {
   const { data: session } = useSession()
-  const isAdmin = session?.user?.email === ADMIN_EMAIL
+  const isAdmin = !!session?.user?.email && ADMIN_EMAILS.includes(session.user.email)
   const [leads, setLeads] = useState<Lead[]>([])
   const [error, setError] = useState<string | null>(null)
   const [sendStatus, setSendStatus] = useState<SendStatus>("idle")

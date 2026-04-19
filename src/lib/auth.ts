@@ -4,7 +4,7 @@ import type { JWT } from 'next-auth/jwt'
 import AzureADProvider from 'next-auth/providers/azure-ad'
 import { prisma } from '@/lib/prisma'
 
-const ADMIN_EMAIL = 'leonard.zimmermann@smartflow-consulting.com'
+const ADMIN_EMAILS = ['leonard.zimmermann@smartflow-consulting.com', 'rolf.zimmermann@smartflow-consulting.com']
 
 async function refreshAccessToken(refreshToken: string): Promise<{ access_token: string; refresh_token: string; expires_at: number } | null> {
   try {
@@ -61,7 +61,7 @@ export const authOptions: NextAuthOptions = {
 
         // Seats-Check: nur für neue User (nicht bereits registrierte)
         const domain = user.email.split('@')[1]
-        if (domain && domain !== ADMIN_EMAIL.split('@')[1]) {
+        if (domain && !ADMIN_EMAILS.includes(user.email)) {
           const domainLimit = await prisma.domainLimit.findUnique({ where: { domain } })
           if (domainLimit?.userLimit) {
             const existingUser = await prisma.user.findUnique({ where: { email: user.email } })

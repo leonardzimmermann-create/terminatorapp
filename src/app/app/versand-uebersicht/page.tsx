@@ -9,8 +9,8 @@ export default async function AdminPage() {
   const session = await getServerSession(authOptions)
   if (!session?.user?.email) redirect('/app')
 
-  const ADMIN_EMAIL = 'leonard.zimmermann@smartflow-consulting.com'
-  const isAdmin = session.user.email === ADMIN_EMAIL
+  const ADMIN_EMAILS = ['leonard.zimmermann@smartflow-consulting.com', 'rolf.zimmermann@smartflow-consulting.com']
+  const isAdmin = ADMIN_EMAILS.includes(session.user.email)
   const userDomain = session.user.email.split('@')[1] ?? ''
 
   let logs: Awaited<ReturnType<typeof prisma.sendLog.findMany<{ include: { invitations: true } }>>> = []

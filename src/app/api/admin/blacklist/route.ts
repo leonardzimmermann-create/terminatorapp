@@ -3,11 +3,11 @@ import { NextResponse } from 'next/server'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
-const ADMIN_EMAIL = 'leonard.zimmermann@smartflow-consulting.com'
+const ADMIN_EMAILS = ['leonard.zimmermann@smartflow-consulting.com', 'rolf.zimmermann@smartflow-consulting.com']
 
 async function requireAdmin() {
   const session = await getServerSession(authOptions)
-  return session?.user?.email === ADMIN_EMAIL ? session : null
+  return session?.user?.email && ADMIN_EMAILS.includes(session.user.email) ? session : null
 }
 
 export async function POST(req: Request) {

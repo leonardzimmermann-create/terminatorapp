@@ -6,7 +6,7 @@ import SessionProvider from '@/components/SessionProvider'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Lead Meeting App',
+  title: 'Entscheider-Termine per Knopfdruck',
   description: 'Web-App für Lead-Management und Teams-Termineinladungen',
 }
 

@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
-const ADMIN_EMAIL = 'leonard.zimmermann@smartflow-consulting.com'
+const ADMIN_EMAILS = ['leonard.zimmermann@smartflow-consulting.com', 'rolf.zimmermann@smartflow-consulting.com']
 
 function currentMonthRange() {
   const now = new Date()
@@ -27,7 +27,7 @@ async function enrichLimit(l: { id: number; domain: string; sendLimit: number; u
 
 export async function GET(_req: NextRequest) {
   const session = await getServerSession(authOptions)
-  if (!session?.user?.email || session.user.email !== ADMIN_EMAIL) {
+  if (!session?.user?.email || !ADMIN_EMAILS.includes(session.user.email)) {
     return new Response(JSON.stringify({ error: 'Nicht autorisiert' }), { status: 403 })
   }
 
@@ -38,7 +38,7 @@ export async function GET(_req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
-  if (!session?.user?.email || session.user.email !== ADMIN_EMAIL) {
+  if (!session?.user?.email || !ADMIN_EMAILS.includes(session.user.email)) {
     return new Response(JSON.stringify({ error: 'Nicht autorisiert' }), { status: 403 })
   }
 
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   const session = await getServerSession(authOptions)
-  if (!session?.user?.email || session.user.email !== ADMIN_EMAIL) {
+  if (!session?.user?.email || !ADMIN_EMAILS.includes(session.user.email)) {
     return new Response(JSON.stringify({ error: 'Nicht autorisiert' }), { status: 403 })
   }
 

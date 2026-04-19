@@ -3,11 +3,11 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
-const ADMIN_EMAIL = 'leonard.zimmermann@smartflow-consulting.com'
+const ADMIN_EMAILS = ['leonard.zimmermann@smartflow-consulting.com', 'rolf.zimmermann@smartflow-consulting.com']
 
 export async function GET() {
   const session = await getServerSession(authOptions)
-  if (session?.user?.email !== ADMIN_EMAIL) {
+  if (!session?.user?.email || !ADMIN_EMAILS.includes(session.user.email)) {
     return NextResponse.json({ error: 'Kein Zugriff' }, { status: 403 })
   }
 

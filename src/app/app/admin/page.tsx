@@ -4,11 +4,11 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import AdminPanel from '@/components/AdminPanel'
 
-const ADMIN_EMAIL = 'leonard.zimmermann@smartflow-consulting.com'
+const ADMIN_EMAILS = ['leonard.zimmermann@smartflow-consulting.com', 'rolf.zimmermann@smartflow-consulting.com']
 
 export default async function AdminPage() {
   const session = await getServerSession(authOptions)
-  if (!session?.user?.email || session.user.email !== ADMIN_EMAIL) redirect('/app')
+  if (!session?.user?.email || !ADMIN_EMAILS.includes(session.user.email)) redirect('/app')
 
   const now = new Date()
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
