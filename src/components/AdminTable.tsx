@@ -211,7 +211,14 @@ export default function AdminTable({ logs: initialLogs, currentUserEmail }: { lo
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-right text-red-400">{log.declinedCount ?? "–"}</td>
+                    <td className="px-4 py-3 text-right text-red-400 font-medium">
+                      {log.declinedCount ?? "–"}
+                      {log.declinedCount != null && log.successCount > 0 && (
+                        <span className="ml-1.5 text-red-600 font-normal">
+                          ({Math.round((log.declinedCount / log.successCount) * 100)}%)
+                        </span>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-right text-yellow-400">{log.tentativeCount ?? "–"}</td>
                     <td className="px-4 py-3 text-right">
                       {log.subject && (
