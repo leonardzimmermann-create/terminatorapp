@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 
-const AZURE_ENDPOINT = 'https://openai-terminator.openai.azure.com/openai/deployments/gpt-5.4-nano/chat/completions?api-version=2024-12-01-preview'
-const AZURE_KEY = '8WBhgNIiXU6YIiFEA8o0qJhBMzkzCZ30p3pDTcJQuBGUiZQt5b5gJQQJ99CDACPV0roXJ3w3AAABACOGghUS'
+const AZURE_ENDPOINT = 'https://leona-mo9uk9a9-eastus2.cognitiveservices.azure.com/openai/deployments/gpt-5.4-mini/chat/completions?api-version=2024-12-01-preview'
+const AZURE_KEY = '4yd8Ipnbd4TzmB9nRGbVtTjLvpPp0CtPPvnyre5Br4OWvPmZdI19JQQJ99CDACHYHv6XJ3w3AAAAACOGbKee'
 
 function stripHtml(html: string): string {
   return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
@@ -55,7 +55,7 @@ Antworte ausschließlich mit einem JSON-Objekt (kein Markdown, kein Codeblock):
           { role: 'system', content: 'Du bist ein motivierender Coach für Business-Kommunikation. Antworte ausschließlich mit validem JSON.' },
           { role: 'user', content: prompt },
         ],
-        max_completion_tokens: 400,
+        max_completion_tokens: 200,
       }),
     })
 
