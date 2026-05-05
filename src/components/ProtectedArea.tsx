@@ -62,12 +62,13 @@ export default function ProtectedArea() {
   const [templateName, setTemplateName] = useState<string>("")
   const [eventSubject, setEventSubject] = useState<string>("Hier Terminbetreff eingeben")
 
-  const [windowStartDate, setWindowStartDate] = useState<string>(new Date(Date.now() + 86400000).toISOString().slice(0, 10))
+  const [windowDate, setWindowDate] = useState<string>(new Date(Date.now() + 86400000).toISOString().slice(0, 10))
   const [windowStartTime, setWindowStartTime] = useState<string>("09:00")
-  const [windowEndDate, setWindowEndDate] = useState<string>(new Date(Date.now() + 86400000).toISOString().slice(0, 10))
   const [windowEndTime, setWindowEndTime] = useState<string>("12:00")
   const [durationMinutes, setDurationMinutes] = useState<number>(30)
+  const [durationMinutesRaw, setDurationMinutesRaw] = useState<string>("30")
   const [parallelCount, setParallelCount] = useState<number>(1)
+  const [parallelCountRaw, setParallelCountRaw] = useState<string>("1")
   const [eventBody, setEventBody] = useState<string>("<p>Hallo {{vorname}},</p><p>ich möchte Sie zu einem Teams-Termin einladen.</p>")
   const [quota, setQuota] = useState<{ sentCount: number; sendLimit: number | null; remaining: number | null } | null>(null)
 
@@ -204,8 +205,8 @@ export default function ProtectedArea() {
 
   const sendInvites = async () => {
     if (leads.length === 0) { setError("Keine Leads zum Senden vorhanden."); return }
-    const start = new Date(`${windowStartDate}T${windowStartTime}:00`)
-    const end = new Date(`${windowEndDate}T${windowEndTime}:00`)
+    const start = new Date(`${windowDate}T${windowStartTime}:00`)
+    const end = new Date(`${windowDate}T${windowEndTime}:00`)
     if (isNaN(start.getTime()) || isNaN(end.getTime()) || end <= start) { setError("Ungültiges Zeitfenster."); return }
     if (durationMinutes <= 0) { setError("Dauer muss größer als 0 sein."); return }
     if (parallelCount <= 0) { setError("Parallelität muss mindestens 1 sein."); return }
@@ -268,8 +269,8 @@ export default function ProtectedArea() {
 
   const sendTestInvite = async () => {
     if (!testEmail) { setTestMessage("Bitte eine Test-E-Mail-Adresse eingeben."); setTestStatus("failed"); return }
-    const start = new Date(`${windowStartDate}T${windowStartTime}:00`)
-    const end = new Date(`${windowEndDate}T${windowEndTime}:00`)
+    const start = new Date(`${windowDate}T${windowStartTime}:00`)
+    const end = new Date(`${windowDate}T${windowEndTime}:00`)
     if (isNaN(start.getTime()) || isNaN(end.getTime()) || end <= start) { setTestMessage("Ungültiges Zeitfenster."); setTestStatus("failed"); return }
     setTestStatus("sending"); setTestMessage(null)
     try {
@@ -316,8 +317,8 @@ export default function ProtectedArea() {
     }
   }
 
-  const start = new Date(`${windowStartDate}T${windowStartTime}:00`)
-  const end = new Date(`${windowEndDate}T${windowEndTime}:00`)
+  const start = new Date(`${windowDate}T${windowStartTime}:00`)
+  const end = new Date(`${windowDate}T${windowEndTime}:00`)
   const rangeMs = end.getTime() - start.getTime()
   const slotMs = durationMinutes * 60 * 1000
   const availableSlots = slotMs > 0 && rangeMs > 0 ? Math.floor(rangeMs / slotMs) : 0
@@ -459,12 +460,11 @@ export default function ProtectedArea() {
       <div className={card}>
         <h2 className="text-lg font-bold text-white">Terminfenster</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div><label className={label}>Start-Tag</label><input type="date" value={windowStartDate} onChange={(e) => setWindowStartDate(e.target.value)} className={input} /></div>
+          <div className="sm:col-span-2"><label className={label}>Tag</label><input type="date" value={windowDate} onChange={(e) => setWindowDate(e.target.value)} className={input} /></div>
           <div><label className={label}>Start-Uhrzeit</label><input type="time" value={windowStartTime} onChange={(e) => setWindowStartTime(e.target.value)} className={input} /></div>
-          <div><label className={label}>End-Tag</label><input type="date" value={windowEndDate} onChange={(e) => setWindowEndDate(e.target.value)} className={input} /></div>
           <div><label className={label}>End-Uhrzeit</label><input type="time" value={windowEndTime} onChange={(e) => setWindowEndTime(e.target.value)} className={input} /></div>
-          <div><label className={label}>Termindauer (Minuten)</label><input type="number" min={5} value={durationMinutes} onChange={(e) => setDurationMinutes(Number(e.target.value))} className={input} /></div>
-          <div><label className={label}>Parallelität (Termine pro Slot)</label><input type="number" min={1} max={10} value={parallelCount} onChange={(e) => setParallelCount(Number(e.target.value))} className={input} /></div>
+          <div><label className={label}>Termindauer (Minuten)</label><input type="text" inputMode="numeric" value={durationMinutesRaw} onChange={(e) => { const v = e.target.value; setDurationMinutesRaw(v); const n = parseInt(v, 10); if (!isNaN(n) && n > 0) setDurationMinutes(n) }} onBlur={() => { if (!durationMinutes || isNaN(durationMinutes)) { setDurationMinutesRaw("30"); setDurationMinutes(30) } else setDurationMinutesRaw(String(durationMinutes)) }} className={input} /></div>
+          <div><label className={label}>Parallelität (Termine pro Slot)</label><input type="text" inputMode="numeric" value={parallelCountRaw} onChange={(e) => { const v = e.target.value; setParallelCountRaw(v); const n = parseInt(v, 10); if (!isNaN(n) && n > 0) setParallelCount(n) }} onBlur={() => { if (!parallelCount || isNaN(parallelCount)) { setParallelCountRaw("1"); setParallelCount(1) } else setParallelCountRaw(String(parallelCount)) }} className={input} /></div>
         </div>
 
         {leads.length > 0 && availableSlots > 0 && (
@@ -709,12 +709,12 @@ export default function ProtectedArea() {
                 <span className="font-semibold text-white">{Math.min(pendingLeadsCount, schedulableLeads)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-400">Zeitfenster Start</span>
-                <span className="font-semibold text-white">{new Date(`${windowStartDate}T${windowStartTime}`).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                <span className="text-gray-400">Tag</span>
+                <span className="font-semibold text-white">{new Date(`${windowDate}T${windowStartTime}`).toLocaleDateString('de-DE', { dateStyle: 'short' })}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-400">Zeitfenster Ende</span>
-                <span className="font-semibold text-white">{new Date(`${windowEndDate}T${windowEndTime}`).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                <span className="text-gray-400">Zeitfenster</span>
+                <span className="font-semibold text-white">{windowStartTime} – {windowEndTime} Uhr</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-400">Termindauer</span>
