@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react"
 import RichTextEditor from "./RichTextEditor"
 import * as XLSX from "xlsx"
 
-const ADMIN_EMAILS = ["leonard.zimmermann@smartflow-consulting.com", "rolf.zimmermann@smartflow-consulting.com"]
+const ADMIN_EMAILS = ["leonard.zimmermann@smartflow-consulting.com", "rolf.zimmermann@smartflow-consulting.com", "marcel@sales-culture.de", "david@sales-culture.de"]
 
 function downloadLeadTemplate() {
   const ws = XLSX.utils.aoa_to_sheet([

@@ -9,7 +9,7 @@ export default async function AdminPage() {
   const session = await getServerSession(authOptions)
   if (!session?.user?.email) redirect('/app')
 
-  const ADMIN_EMAILS = ['leonard.zimmermann@smartflow-consulting.com', 'rolf.zimmermann@smartflow-consulting.com']
+  const ADMIN_EMAILS = ['leonard.zimmermann@smartflow-consulting.com', 'rolf.zimmermann@smartflow-consulting.com', 'marcel@sales-culture.de', 'david@sales-culture.de']
   const isAdmin = ADMIN_EMAILS.includes(session.user.email)
   const userDomain = session.user.email.split('@')[1] ?? ''
 

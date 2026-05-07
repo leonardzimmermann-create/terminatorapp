@@ -4,7 +4,7 @@ import type { JWT } from 'next-auth/jwt'
 import AzureADProvider from 'next-auth/providers/azure-ad'
 import { prisma } from '@/lib/prisma'
 
-const ADMIN_EMAILS = ['leonard.zimmermann@smartflow-consulting.com', 'rolf.zimmermann@smartflow-consulting.com']
+const ADMIN_EMAILS = ['leonard.zimmermann@smartflow-consulting.com', 'rolf.zimmermann@smartflow-consulting.com', 'marcel@sales-culture.de', 'david@sales-culture.de']
 
 async function refreshAccessToken(refreshToken: string): Promise<{ access_token: string; refresh_token: string; expires_at: number } | null> {
   try {
