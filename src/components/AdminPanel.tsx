@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 
 type UserStat = {
   email: string
@@ -41,6 +41,29 @@ export default function AdminPanel({
   const [newEmail, setNewEmail] = useState("")
   const [adding, setAdding] = useState(false)
   const [error, setError] = useState("")
+
+  const [domainFilter, setDomainFilter] = useState("")
+  const [domainSearch, setDomainSearch] = useState("")
+  const [domainDropdownOpen, setDomainDropdownOpen] = useState(false)
+  const domainDropdownRef = useRef<HTMLDivElement>(null)
+
+  const [limitsFilter, setLimitsFilter] = useState("")
+  const [limitsSearch, setLimitsSearch] = useState("")
+  const [limitsDropdownOpen, setLimitsDropdownOpen] = useState(false)
+  const limitsDropdownRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (domainDropdownRef.current && !domainDropdownRef.current.contains(e.target as Node)) {
+        setDomainDropdownOpen(false)
+      }
+      if (limitsDropdownRef.current && !limitsDropdownRef.current.contains(e.target as Node)) {
+        setLimitsDropdownOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [])
 
   const [domainLimits, setDomainLimits] = useState(initialDomainLimits)
   const [newDomain, setNewDomain] = useState("")
@@ -174,11 +197,56 @@ export default function AdminPanel({
           <button onClick={addDomainLimit} disabled={addingDomain || !newDomain} className="rounded-xl bg-blue-600 hover:bg-blue-500 px-4 py-2 text-white text-sm font-medium disabled:opacity-40 transition-colors">
             {addingDomain ? "…" : "Hinzufügen"}
           </button>
+          <div ref={limitsDropdownRef} className="relative w-56 ml-auto">
+            <button
+              type="button"
+              onClick={() => { setLimitsDropdownOpen((o) => !o); setLimitsSearch("") }}
+              className="w-full flex items-center justify-between rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm text-gray-300 focus:outline-none hover:border-white/20"
+            >
+              <span className={limitsFilter ? "text-white" : "text-gray-500"}>{limitsFilter || "Alle Domains"}</span>
+              <svg className="w-4 h-4 text-gray-500 ml-2 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+            </button>
+            {limitsDropdownOpen && (
+              <div className="absolute z-20 mt-1 right-0 w-full rounded-xl bg-[#1a1f2e] border border-white/10 shadow-2xl overflow-hidden">
+                <div className="p-2 border-b border-white/10">
+                  <input
+                    autoFocus
+                    type="text"
+                    value={limitsSearch}
+                    onChange={(e) => setLimitsSearch(e.target.value)}
+                    placeholder="Suchen…"
+                    className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-1.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+                <ul className="max-h-52 overflow-y-auto py-1">
+                  <li
+                    onClick={() => { setLimitsFilter(""); setLimitsDropdownOpen(false) }}
+                    className={`px-3 py-2 text-sm cursor-pointer transition-colors ${!limitsFilter ? "bg-blue-600/20 text-blue-300 font-medium" : "text-gray-300 hover:bg-white/5"}`}
+                  >
+                    Alle Domains
+                  </li>
+                  {domainLimits.map((d) => d.domain).sort().filter((d) => d.toLowerCase().includes(limitsSearch.toLowerCase())).map((d) => (
+                    <li
+                      key={d}
+                      onClick={() => { setLimitsFilter(d); setLimitsDropdownOpen(false) }}
+                      className={`px-3 py-2 text-sm cursor-pointer transition-colors ${limitsFilter === d ? "bg-blue-600/20 text-blue-300 font-medium" : "text-gray-300 hover:bg-white/5"}`}
+                    >
+                      {d}
+                    </li>
+                  ))}
+                  {domainLimits.filter((d) => d.domain.toLowerCase().includes(limitsSearch.toLowerCase())).length === 0 && (
+                    <li className="px-3 py-2 text-sm text-gray-500 italic">Keine Treffer</li>
+                  )}
+                </ul>
+              </div>
+            )}
+          </div>
         </div>
         {domainError && <p className="text-red-400 text-xs mb-3">{domainError}</p>}
         {domainLimits.length === 0 ? (
           <p className="text-gray-500 text-sm">Keine Domain-Limits konfiguriert.</p>
         ) : (
+          <>
           <div className="bg-white/5 backdrop-blur border border-white/10 rounded-2xl overflow-hidden">
             <table className="min-w-full text-left text-sm">
               <thead>
@@ -193,7 +261,7 @@ export default function AdminPanel({
                 </tr>
               </thead>
               <tbody>
-                {domainLimits.map((d) => {
+                {(limitsFilter ? domainLimits.filter((d) => d.domain === limitsFilter) : domainLimits).map((d) => {
                   const remaining = d.sendLimit - d.sentCount
                   const pct = Math.min(100, Math.round((d.sentCount / d.sendLimit) * 100))
                   const seatsFull = d.userLimit != null && d.userCount >= d.userLimit
@@ -234,12 +302,63 @@ export default function AdminPanel({
               </tbody>
             </table>
           </div>
+          </>
         )}
       </section>
 
       {/* Login-Statistiken */}
       <section>
-        <h2 className="text-lg font-bold text-white mb-4">User-Logins</h2>
+        <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
+          <h2 className="text-lg font-bold text-white">User-Logins</h2>
+          {initialStats.length > 0 && (() => {
+            const allDomains = [...new Set(initialStats.map((u) => u.domain))].sort()
+            const filtered = allDomains.filter((d) => d.toLowerCase().includes(domainSearch.toLowerCase()))
+            return (
+              <div ref={domainDropdownRef} className="relative w-56">
+                <button
+                  type="button"
+                  onClick={() => { setDomainDropdownOpen((o) => !o); setDomainSearch("") }}
+                  className="w-full flex items-center justify-between rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm text-gray-300 focus:outline-none hover:border-white/20"
+                >
+                  <span className={domainFilter ? "text-white" : "text-gray-500"}>{domainFilter || "Alle Kunden"}</span>
+                  <svg className="w-4 h-4 text-gray-500 ml-2 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                </button>
+                {domainDropdownOpen && (
+                  <div className="absolute z-20 mt-1 w-full rounded-xl bg-[#1a1f2e] border border-white/10 shadow-2xl overflow-hidden">
+                    <div className="p-2 border-b border-white/10">
+                      <input
+                        autoFocus
+                        type="text"
+                        value={domainSearch}
+                        onChange={(e) => setDomainSearch(e.target.value)}
+                        placeholder="Suchen…"
+                        className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-1.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                      />
+                    </div>
+                    <ul className="max-h-52 overflow-y-auto py-1">
+                      <li
+                        onClick={() => { setDomainFilter(""); setDomainDropdownOpen(false) }}
+                        className={`px-3 py-2 text-sm cursor-pointer transition-colors ${!domainFilter ? "bg-blue-600/20 text-blue-300 font-medium" : "text-gray-300 hover:bg-white/5"}`}
+                      >
+                        Alle Kunden
+                      </li>
+                      {filtered.map((d) => (
+                        <li
+                          key={d}
+                          onClick={() => { setDomainFilter(d); setDomainDropdownOpen(false) }}
+                          className={`px-3 py-2 text-sm cursor-pointer transition-colors ${domainFilter === d ? "bg-blue-600/20 text-blue-300 font-medium" : "text-gray-300 hover:bg-white/5"}`}
+                        >
+                          {d}
+                        </li>
+                      ))}
+                      {filtered.length === 0 && <li className="px-3 py-2 text-sm text-gray-500 italic">Keine Treffer</li>}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )
+          })()}
+        </div>
         {initialStats.length === 0 ? (
           <p className="text-gray-500 text-sm">Noch keine Logins erfasst.</p>
         ) : (
@@ -257,7 +376,7 @@ export default function AdminPanel({
                 </tr>
               </thead>
               <tbody>
-                {initialStats.map((u) => (
+                {(domainFilter ? initialStats.filter((u) => u.domain === domainFilter) : initialStats).map((u) => (
                   <tr key={u.email} className="border-t border-white/5 text-gray-300 odd:bg-white/5">
                     <td className="px-4 py-3">{u.userName ?? "–"}</td>
                     <td className="px-4 py-3 text-gray-400">{u.email}</td>

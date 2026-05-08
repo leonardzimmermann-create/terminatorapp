@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useMemo } from "react"
 import { BarChart, Bar, LabelList, XAxis, YAxis, Legend, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell, Tooltip } from "recharts"
 
 type LogStat = {
@@ -39,13 +39,11 @@ const BarTooltip = ({ active, payload, label }: TooltipProps) => {
 }
 
 
-export default function SendCharts({ logs, isAdmin }: { logs: LogStat[]; isAdmin: boolean }) {
+export default function SendCharts({ logs, isAdmin, domainFilter, onDomainFilterChange }: { logs: LogStat[]; isAdmin: boolean; domainFilter: string; onDomainFilterChange: (v: string) => void }) {
   const allDomains = useMemo(
     () => Array.from(new Set(logs.map((l) => l.userEmail.split("@")[1] ?? ""))).sort(),
     [logs]
   )
-
-  const [domainFilter, setDomainFilter] = useState("")
 
   const filteredLogs = domainFilter
     ? logs.filter((l) => l.userEmail.split("@")[1] === domainFilter)
@@ -122,7 +120,7 @@ export default function SendCharts({ logs, isAdmin }: { logs: LogStat[]; isAdmin
             <label className="text-xs text-gray-400">Kunde:</label>
             <select
               value={domainFilter}
-              onChange={(e) => setDomainFilter(e.target.value)}
+              onChange={(e) => onDomainFilterChange(e.target.value)}
               className="rounded-xl bg-gray-800 border border-white/10 px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-blue-500"
             >
               <option value="">Alle Kunden</option>

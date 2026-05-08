@@ -35,7 +35,7 @@ const responseLabel = (r: string) => {
   return { label: "Keine Reaktion", color: "text-gray-400" }
 }
 
-export default function AdminTable({ logs: initialLogs, currentUserEmail }: { logs: Log[]; currentUserEmail: string }) {
+export default function AdminTable({ logs: initialLogs, currentUserEmail, domainFilter }: { logs: Log[]; currentUserEmail: string; domainFilter?: string }) {
   const [logs, setLogs] = useState<Log[]>(initialLogs)
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
   const [collapsed, setCollapsed] = useState<Set<number>>(new Set())
@@ -57,15 +57,19 @@ export default function AdminTable({ logs: initialLogs, currentUserEmail }: { lo
     return emailOk && statusOk
   }
 
+  const domainFilteredLogs = domainFilter
+    ? logs.filter((l) => l.userEmail.split("@")[1] === domainFilter)
+    : logs
+
   const filteredLogs = isFiltering
-    ? logs.filter((l) => {
+    ? domainFilteredLogs.filter((l) => {
         const userOk = !userSearchTerm || l.userEmail.toLowerCase().includes(userSearchTerm)
         if (!userOk) return false
         // Runs ohne Einladungsdaten: nur anzeigen wenn kein Email-Filter aktiv
         if (l.invitations.length === 0) return !searchTerm
         return l.invitations.some(matchesInv)
       })
-    : logs
+    : domainFilteredLogs
 
   const toggleExpand = (id: number) => {
     if (isFiltering) {
