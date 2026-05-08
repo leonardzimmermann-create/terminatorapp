@@ -14,7 +14,7 @@ type Invitation = {
 type Log = {
   id: number
   userEmail: string
-  sentAt: Date
+  sentAt: Date | string
   totalLeads: number
   successCount: number
   failedCount: number
