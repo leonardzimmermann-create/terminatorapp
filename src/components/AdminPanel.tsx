@@ -311,7 +311,7 @@ export default function AdminPanel({
         <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
           <h2 className="text-lg font-bold text-white">User-Logins</h2>
           {initialStats.length > 0 && (() => {
-            const allDomains = [...new Set(initialStats.map((u) => u.domain))].sort()
+            const allDomains = Array.from(new Set(initialStats.map((u) => u.domain))).sort()
             const filtered = allDomains.filter((d) => d.toLowerCase().includes(domainSearch.toLowerCase()))
             return (
               <div ref={domainDropdownRef} className="relative w-56">
