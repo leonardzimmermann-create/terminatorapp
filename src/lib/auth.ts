@@ -59,11 +59,12 @@ export const authOptions: NextAuthOptions = {
         const blocked = await prisma.blacklistEntry.findUnique({ where: { email: user.email } })
         if (blocked) return '/not-authorized'
 
-        // Seats-Check: nur für neue User (nicht bereits registrierte)
+        // Domain-Check: nur registrierte Domains dürfen rein
         const domain = user.email.split('@')[1]
         if (domain && !ADMIN_EMAILS.includes(user.email)) {
           const domainLimit = await prisma.domainLimit.findUnique({ where: { domain } })
-          if (domainLimit?.userLimit) {
+          if (!domainLimit) return '/not-authorized'
+          if (domainLimit.userLimit) {
             const existingUser = await prisma.user.findUnique({ where: { email: user.email } })
             if (!existingUser) {
               const userCount = await prisma.user.count({ where: { email: { endsWith: `@${domain}` } } })
