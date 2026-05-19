@@ -1,7 +1,7 @@
 "use client"
 
 import { useLanguage } from "@/components/LanguageProvider"
-import { t } from "@/lib/i18n"
+import { t, type Lang } from "@/lib/i18n"
 import { useMemo } from "react"
 import { BarChart, Bar, LabelList, XAxis, YAxis, Legend, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell, Tooltip } from "recharts"
 
@@ -19,7 +19,7 @@ const DOMAIN_COLORS = [
   "#06b6d4","#f97316","#ec4899","#14b8a6","#a855f7",
 ]
 
-type TooltipProps = { active?: boolean; payload?: { dataKey: string; value: number; fill: string }[]; label?: string; lang: string }
+type TooltipProps = { active?: boolean; payload?: { dataKey: string; value: number; fill: string }[]; label?: string; lang: Lang }
 const BarTooltip = ({ active, payload, label, lang }: TooltipProps) => {
   if (!active || !payload?.length) return null
   const total = payload.reduce((s: number, p: { value: number }) => s + (p.value ?? 0), 0)
