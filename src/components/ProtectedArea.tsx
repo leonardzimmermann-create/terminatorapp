@@ -4,6 +4,8 @@ import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
 import RichTextEditor from "./RichTextEditor"
 import * as XLSX from "xlsx"
+import { useLanguage } from "@/components/LanguageProvider"
+import { t } from "@/lib/i18n"
 
 const ADMIN_EMAILS = ["leonard.zimmermann@smartflow-consulting.com", "rolf.zimmermann@smartflow-consulting.com", "marcel@sales-culture.de", "david@sales-culture.de"]
 
@@ -40,6 +42,7 @@ const btnPrimary = "rounded-xl bg-blue-600 hover:bg-blue-500 px-5 py-2.5 text-wh
 
 export default function ProtectedArea() {
   const { data: session } = useSession()
+  const { lang } = useLanguage()
   const isAdmin = !!session?.user?.email && ADMIN_EMAILS.includes(session.user.email)
   const [leads, setLeads] = useState<Lead[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -71,6 +74,24 @@ export default function ProtectedArea() {
   const [parallelCountRaw, setParallelCountRaw] = useState<string>("1")
   const [eventBody, setEventBody] = useState<string>("<p>Hallo {{vorname}},</p><p>ich möchte Sie zu einem Teams-Termin einladen.</p>")
   const [quota, setQuota] = useState<{ sentCount: number; sendLimit: number | null; remaining: number | null } | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    const run = async () => {
+      const res = await fetch('/api/admin/my-future-logs').then(r => r.json()).catch(() => null)
+      if (!res?.logIds?.length || cancelled) return
+      for (const logId of res.logIds) {
+        if (cancelled) break
+        await fetch('/api/admin/refresh-status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ logId }),
+        }).catch(() => {})
+      }
+    }
+    run()
+    return () => { cancelled = true }
+  }, [])
 
   useEffect(() => {
     fetch("/api/domain-quota")
@@ -178,18 +199,18 @@ export default function ProtectedArea() {
 
   const parseCsv = (text: string) => {
     const lines = text.trim().split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
-    if (lines.length < 2) { setError("Die CSV muss mindestens eine Datenzeile enthalten."); return }
+    if (lines.length < 2) { setError(t("csv_min_row", lang)); return }
     const delimiter = lines[0].includes(";") ? ";" : ","
     const header = lines[0].split(delimiter).map((h) => h.trim().toLowerCase())
     if (header.length < 5 || header[0] !== "anrede" || header[1] !== "vorname" || header[2] !== "nachname" || header[3] !== "email" || header[4] !== "firmenname") {
-      setError("Ungültiges CSV-Format. Erwartete Spalten: Anrede, Vorname, Nachname, Email, Firmenname[, Variable 1, Variable 2, Variable 3]"); return
+      setError(t("csv_invalid_format", lang)); return
     }
     const items: Lead[] = []
     for (let i = 1; i < lines.length; i++) {
       const fields = lines[i].split(delimiter).map((v) => v.trim())
-      if (fields.length < 5) { setError(`Zeile ${i + 1} hat nicht genug Felder.`); return }
+      if (fields.length < 5) { setError(`${t("row", lang)} ${i + 1} ${t("csv_not_enough_fields", lang)}`); return }
       const [anrede, vorname, nachname, email, firmenname, var1, var2, var3] = fields
-      if (!vorname || !nachname || !email) { setError(`Zeile ${i + 1}: Vorname, Nachname und Email dürfen nicht leer sein.`); return }
+      if (!vorname || !nachname || !email) { setError(`${t("row", lang)} ${i + 1}: ${t("csv_required_fields", lang)}`); return }
       items.push({ id: i, anrede, vorname, nachname, email, firmenname, var1, var2, var3, status: "pending" })
     }
     setError(null)
@@ -199,17 +220,17 @@ export default function ProtectedArea() {
   const handleFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
-    if (!file.name.endsWith(".csv")) { setError("Bitte eine .csv-Datei auswählen."); return }
+    if (!file.name.endsWith(".csv")) { setError(t("csv_select_file", lang)); return }
     parseCsv(await file.text())
   }
 
   const sendInvites = async () => {
-    if (leads.length === 0) { setError("Keine Leads zum Senden vorhanden."); return }
+    if (leads.length === 0) { setError(t("csv_min_row", lang)); return }
     const start = new Date(`${windowDate}T${windowStartTime}:00`)
     const end = new Date(`${windowDate}T${windowEndTime}:00`)
-    if (isNaN(start.getTime()) || isNaN(end.getTime()) || end <= start) { setError("Ungültiges Zeitfenster."); return }
-    if (durationMinutes <= 0) { setError("Dauer muss größer als 0 sein."); return }
-    if (parallelCount <= 0) { setError("Parallelität muss mindestens 1 sein."); return }
+    if (isNaN(start.getTime()) || isNaN(end.getTime()) || end <= start) { setError(t("invalid_window", lang)); return }
+    if (durationMinutes <= 0) { setError(t("invalid_window", lang)); return }
+    if (parallelCount <= 0) { setError(t("invalid_window", lang)); return }
 
     // Retry mode: only send leads that previously failed; never re-send successful ones
     const hasFailedLeads = leads.some((l) => l.status === "failed")
@@ -268,10 +289,10 @@ export default function ProtectedArea() {
   }
 
   const sendTestInvite = async () => {
-    if (!testEmail) { setTestMessage("Bitte eine Test-E-Mail-Adresse eingeben."); setTestStatus("failed"); return }
+    if (!testEmail) { setTestMessage(t("test_email_missing", lang)); setTestStatus("failed"); return }
     const start = new Date(`${windowDate}T${windowStartTime}:00`)
     const end = new Date(`${windowDate}T${windowEndTime}:00`)
-    if (isNaN(start.getTime()) || isNaN(end.getTime()) || end <= start) { setTestMessage("Ungültiges Zeitfenster."); setTestStatus("failed"); return }
+    if (isNaN(start.getTime()) || isNaN(end.getTime()) || end <= start) { setTestMessage(t("invalid_window", lang)); setTestStatus("failed"); return }
     setTestStatus("sending"); setTestMessage(null)
     try {
       const response = await fetch("/api/teams/send-invitations", {
@@ -310,7 +331,7 @@ export default function ProtectedArea() {
       if (result?.status === "success") {
         setTestStatus("success"); setTestMessage(`Test-Einladung an ${testEmail} versendet.`)
       } else {
-        throw new Error(result?.message || "Unbekannter Fehler")
+        throw new Error(result?.message || t("unknown", lang))
       }
     } catch (err) {
       setTestStatus("failed"); setTestMessage((err as Error).message)
@@ -333,22 +354,22 @@ export default function ProtectedArea() {
 
       <div className="flex items-center gap-4 flex-wrap justify-between">
         <a href="/app/versand-uebersicht" className="inline-flex items-center gap-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 px-4 py-2 text-sm text-gray-300 font-medium transition-colors">
-          Versand-Übersicht →
+          {t("send_overview_link", lang)}
         </a>
 
         {quota && quota.sendLimit !== null && (
           <div className="flex items-center gap-4 bg-white/5 border border-white/10 rounded-xl px-4 py-2">
             <div className="text-center">
-              <p className="text-xs text-gray-400 mb-0.5">Versendet</p>
+              <p className="text-xs text-gray-400 mb-0.5">{t("sent", lang)}</p>
               <p className={`text-sm font-semibold ${quota.sentCount >= quota.sendLimit ? "text-red-400" : "text-gray-200"}`}>
                 {quota.sentCount}
               </p>
             </div>
             <div className="w-px h-8 bg-white/10" />
             <div className="text-center">
-              <p className="text-xs text-gray-400 mb-0.5">Verbleibend</p>
+              <p className="text-xs text-gray-400 mb-0.5">{t("remaining", lang)}</p>
               <p className={`text-sm font-semibold ${quota.remaining !== null && quota.remaining <= 0 ? "text-red-400" : quota.remaining !== null && quota.remaining < 10 ? "text-orange-400" : "text-green-400"}`}>
-                {quota.remaining !== null && quota.remaining <= 0 ? "Limit erreicht" : quota.remaining}
+                {quota.remaining !== null && quota.remaining <= 0 ? t("limit_reached", lang) : quota.remaining}
               </p>
             </div>
             <div className="w-16">
@@ -371,7 +392,7 @@ export default function ProtectedArea() {
       {/* CSV Upload */}
       <div className={card}>
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-white">Lead-Upload</h2>
+          <h2 className="text-lg font-bold text-white">{t("lead_upload", lang)}</h2>
           <button
             onClick={downloadLeadTemplate}
             className="inline-flex items-center gap-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 px-4 py-2 text-white text-sm font-medium transition-colors"
@@ -382,19 +403,19 @@ export default function ProtectedArea() {
               <path d="M13 3V9H19L13 3Z" fill="#185C37"/>
               <path d="M9 13L11.5 17H12.5L15 13H13.8L12 16L10.2 13H9Z" fill="white"/>
             </svg>
-            Lead-Template
+            {t("lead_template", lang)}
           </button>
         </div>
         <div className="flex flex-col gap-4">
           <div>
-            <p className="text-sm text-gray-400 mb-2">CSV-Datei mit Spalten: Anrede, Vorname, Nachname, Email, Firmenname, Variable 1, Variable 2, Variable 3</p>
+            <p className="text-sm text-gray-400 mb-2">{t("csv_hint", lang)}</p>
             <input type="file" accept=".csv" onChange={handleFile} className="text-sm text-gray-300 file:mr-3 file:rounded-lg file:border-0 file:bg-blue-600 file:px-3 file:py-1.5 file:text-white file:text-sm file:cursor-pointer hover:file:bg-blue-500" />
           </div>
           <div>
-            <p className="text-sm text-gray-400 mb-2">Oder Excel-Zellen kopieren und hier einfügen (Strg+V) — ohne Kopfzeile, Reihenfolge: Anrede, Vorname, Nachname, Email, Firmenname, Variable 1, Variable 2, Variable 3</p>
+            <p className="text-sm text-gray-400 mb-2">{t("paste_hint", lang)}</p>
             <textarea
               rows={3}
-              placeholder="Hier klicken und Strg+V drücken…"
+              placeholder={t("paste_placeholder", lang)}
               className={`${input} resize-y font-mono`}
               onPaste={(e) => {
                 e.preventDefault()
@@ -414,18 +435,18 @@ export default function ProtectedArea() {
             />
           </div>
         </div>
-        {error && <p className="text-red-400 text-sm">Fehler: {error}</p>}
+        {error && <p className="text-red-400 text-sm">{t("error", lang)}: {error}</p>}
       </div>
 
       {/* Lead-Tabelle */}
       {leads.length > 0 && (
         <div className="bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-5 sm:p-6 space-y-4 overflow-x-auto">
-          <h2 className="text-lg font-bold text-white">Importierte Leads <span className="text-gray-400 font-normal text-sm">({leads.length})</span></h2>
+          <h2 className="text-lg font-bold text-white">{t("imported_leads", lang)} <span className="text-gray-400 font-normal text-sm">({leads.length})</span></h2>
           <div className="overflow-auto max-h-72 rounded-xl border border-white/10 w-full">
             <table className="min-w-full text-left text-sm">
               <thead>
                 <tr className="bg-white/10 text-gray-300">
-                  {["#","Anrede","Vorname","Nachname","Email","Firma","Var 1","Var 2","Var 3","Status","Details"].map((h) => (
+                  {["#", t("col_salutation",lang), t("col_firstname",lang), t("col_lastname",lang), t("email",lang), t("col_company",lang), "Var 1", "Var 2", "Var 3", t("status",lang), t("col_details",lang)].map((h) => (
                     <th key={h} className="px-2 py-2 font-medium whitespace-nowrap text-xs">{h}</th>
                   ))}
                 </tr>
@@ -458,24 +479,24 @@ export default function ProtectedArea() {
 
       {/* Terminfenster */}
       <div className={card}>
-        <h2 className="text-lg font-bold text-white">Terminfenster</h2>
+        <h2 className="text-lg font-bold text-white">{t("appointment_window", lang)}</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="sm:col-span-2"><label className={label}>Tag</label><input type="date" value={windowDate} onChange={(e) => setWindowDate(e.target.value)} className={input} /></div>
-          <div><label className={label}>Start-Uhrzeit</label><input type="time" value={windowStartTime} onChange={(e) => setWindowStartTime(e.target.value)} className={input} /></div>
-          <div><label className={label}>End-Uhrzeit</label><input type="time" value={windowEndTime} onChange={(e) => setWindowEndTime(e.target.value)} className={input} /></div>
-          <div><label className={label}>Termindauer (Minuten)</label><input type="text" inputMode="numeric" value={durationMinutesRaw} onChange={(e) => { const v = e.target.value; setDurationMinutesRaw(v); const n = parseInt(v, 10); if (!isNaN(n) && n > 0) setDurationMinutes(n) }} onBlur={() => { if (!durationMinutes || isNaN(durationMinutes)) { setDurationMinutesRaw("30"); setDurationMinutes(30) } else setDurationMinutesRaw(String(durationMinutes)) }} className={input} /></div>
-          <div><label className={label}>Parallelität (Termine pro Slot)</label><input type="text" inputMode="numeric" value={parallelCountRaw} onChange={(e) => { const v = e.target.value; setParallelCountRaw(v); const n = parseInt(v, 10); if (!isNaN(n) && n > 0) setParallelCount(n) }} onBlur={() => { if (!parallelCount || isNaN(parallelCount)) { setParallelCountRaw("1"); setParallelCount(1) } else setParallelCountRaw(String(parallelCount)) }} className={input} /></div>
+          <div className="sm:col-span-2"><label className={label}>{t("day", lang)}</label><input type="date" value={windowDate} onChange={(e) => setWindowDate(e.target.value)} className={input} /></div>
+          <div><label className={label}>{t("start_time", lang)}</label><input type="time" value={windowStartTime} onChange={(e) => setWindowStartTime(e.target.value)} className={input} /></div>
+          <div><label className={label}>{t("end_time", lang)}</label><input type="time" value={windowEndTime} onChange={(e) => setWindowEndTime(e.target.value)} className={input} /></div>
+          <div><label className={label}>{t("duration_min", lang)}</label><input type="text" inputMode="numeric" value={durationMinutesRaw} onChange={(e) => { const v = e.target.value; setDurationMinutesRaw(v); const n = parseInt(v, 10); if (!isNaN(n) && n > 0) setDurationMinutes(n) }} onBlur={() => { if (!durationMinutes || isNaN(durationMinutes)) { setDurationMinutesRaw("30"); setDurationMinutes(30) } else setDurationMinutesRaw(String(durationMinutes)) }} className={input} /></div>
+          <div><label className={label}>{t("parallel", lang)}</label><input type="text" inputMode="numeric" value={parallelCountRaw} onChange={(e) => { const v = e.target.value; setParallelCountRaw(v); const n = parseInt(v, 10); if (!isNaN(n) && n > 0) setParallelCount(n) }} onBlur={() => { if (!parallelCount || isNaN(parallelCount)) { setParallelCountRaw("1"); setParallelCount(1) } else setParallelCountRaw(String(parallelCount)) }} className={input} /></div>
         </div>
 
         {leads.length > 0 && availableSlots > 0 && (
           <p className="text-sm text-blue-400">
-            Im Zeitfenster passen <strong>{availableSlots} Slot(s)</strong> × {parallelCount} Parallelität = <strong>{schedulableLeads} Termin(e)</strong>.{" "}
-            {pendingLeadsCount > schedulableLeads && <span className="text-orange-400">{pendingLeadsCount - schedulableLeads} Lead(s) bleiben ohne Slot.</span>}
+            {t("slots_fit", lang)} <strong>{availableSlots} Slot(s)</strong> × {parallelCount} {t("slots_parallelism", lang)} = <strong>{schedulableLeads} {t("slots_appointments", lang)}</strong>.{" "}
+            {pendingLeadsCount > schedulableLeads && <span className="text-orange-400">{pendingLeadsCount - schedulableLeads} {t("slots_remain", lang)}</span>}
           </p>
         )}
 
         <div>
-          <label className={label}>Einladungstext <span className="ml-1 text-xs font-normal text-gray-500">Verwende Variablen als Platzhalter</span></label>
+          <label className={label}>{t("invite_text", lang)} <span className="ml-1 text-xs font-normal text-gray-500">{t("variables_hint", lang)}</span></label>
 
           {/* Vorlagen-Verwaltung */}
           <div className="flex flex-wrap gap-2 mb-3 items-center">
@@ -484,12 +505,12 @@ export default function ProtectedArea() {
               value={selectedTemplateId ?? ""}
               onChange={(e) => {
                 const id = parseInt(e.target.value)
-                const t = templates.find((t) => t.id === id)
-                if (t) { setSelectedTemplateId(t.id); setTemplateName(t.name); setEventBody(t.html); setEventSubject(t.subject || "Termin mit {{vorname}} {{nachname}}") }
+                const tmpl = templates.find((t) => t.id === id)
+                if (tmpl) { setSelectedTemplateId(tmpl.id); setTemplateName(tmpl.name); setEventBody(tmpl.html); setEventSubject(tmpl.subject || "Termin mit {{vorname}} {{nachname}}") }
               }}
             >
-              {templates.length === 0 && <option value="" className="bg-gray-800">— Keine Vorlagen —</option>}
-              {templates.map((t) => <option key={t.id} value={t.id} className="bg-gray-800">{t.name}</option>)}
+              {templates.length === 0 && <option value="" className="bg-gray-800">{t("no_templates", lang)}</option>}
+              {templates.map((tmpl) => <option key={tmpl.id} value={tmpl.id} className="bg-gray-800">{tmpl.name}</option>)}
             </select>
           </div>
 
@@ -498,15 +519,15 @@ export default function ProtectedArea() {
               type="text"
               value={templateName}
               onChange={(e) => setTemplateName(e.target.value)}
-              placeholder="Vorlagenname…"
+              placeholder={t("template_name", lang)}
               className="flex-1 bg-white/10 border border-white/20 text-white placeholder-gray-500 rounded-lg px-3 py-2 text-sm"
             />
             <button onClick={saveTemplate} disabled={tmplSaveStatus === "saving"} className={btnPrimary}>
-              {tmplSaveStatus === "saving" ? "Speichert…" : tmplSaveStatus === "saved" ? "Gespeichert ✓" : tmplSaveStatus === "failed" ? "Fehler" : "Speichern"}
+              {tmplSaveStatus === "saving" ? t("saving", lang) : tmplSaveStatus === "saved" ? t("saved", lang) : tmplSaveStatus === "failed" ? t("error", lang) : t("save", lang)}
             </button>
             {selectedTemplateId && (
               <button onClick={deleteTemplate} className="rounded-xl bg-red-600/80 hover:bg-red-600 px-4 py-2 text-white text-sm transition-colors">
-                Löschen
+                {t("delete", lang)}
               </button>
             )}
             <button
@@ -514,12 +535,12 @@ export default function ProtectedArea() {
               onClick={() => { setSelectedTemplateId(null); setTemplateName("Neue Vorlage"); setEventBody("<p>Hallo {{vorname}},</p>"); setEventSubject("Hier Terminbetreff eingeben"); resetAnalysis() }}
               className="rounded-xl bg-blue-600 hover:bg-blue-500 px-4 py-2 text-white text-sm font-semibold transition-colors shadow-md"
             >
-              + Neu
+              {t("new_template", lang)}
             </button>
           </div>
 
           <div className="mb-3">
-            <label className={label}>Terminbetreff <span className="ml-1 text-xs font-normal text-gray-500">Platzhalter möglich</span></label>
+            <label className={label}>{t("event_subject", lang)} <span className="ml-1 text-xs font-normal text-gray-500">{t("placeholders_ok", lang)}</span></label>
             <input
               type="text"
               value={eventSubject}
@@ -538,7 +559,7 @@ export default function ProtectedArea() {
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
               </svg>
-              KI analysiert deinen Text…
+              {t("ai_analyzing", lang)}
             </div>
           )}
 
@@ -546,13 +567,13 @@ export default function ProtectedArea() {
             <div className="mt-4 bg-green-500/10 border border-green-500/30 rounded-2xl p-5">
               <div className="flex items-center gap-2 mb-3">
                 <span className="text-base">🤖</span>
-                <span className="text-xs font-semibold text-gray-400 uppercase tracking-widest">KI-Schnellanalyse</span>
+                <span className="text-xs font-semibold text-gray-400 uppercase tracking-widest">{t("ai_analysis", lang)}</span>
               </div>
               <div className="flex items-center gap-4">
                 <span className="text-3xl">🏆</span>
                 <div>
-                  <p className="text-green-400 font-bold text-lg">10 / 10 – Perfekt!</p>
-                  <p className="text-sm text-gray-300 mt-0.5">Dein Text ist bereit zum Einsatz. Viel Erfolg beim Versand!</p>
+                  <p className="text-green-400 font-bold text-lg">{t("ai_perfect", lang)}</p>
+                  <p className="text-sm text-gray-300 mt-0.5">{t("ai_ready", lang)}</p>
                 </div>
               </div>
             </div>
@@ -561,7 +582,7 @@ export default function ProtectedArea() {
             <div className="mt-4 bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
               <div className="flex items-center gap-2">
                 <span className="text-base">🤖</span>
-                <span className="text-xs font-semibold text-gray-400 uppercase tracking-widest">KI-Schnellanalyse</span>
+                <span className="text-xs font-semibold text-gray-400 uppercase tracking-widest">{t("ai_analysis", lang)}</span>
               </div>
               <p className="text-sm text-gray-300">{aiAnalysis.motivation}</p>
               <ul className="space-y-2">
@@ -593,20 +614,20 @@ export default function ProtectedArea() {
       {/* Signatur */}
       <div className={card}>
         <div>
-          <h2 className="text-lg font-bold text-white">Meine Signatur</h2>
-          <p className="text-sm text-gray-400">Wird automatisch an jeden Einladungstext angehängt.</p>
+          <h2 className="text-lg font-bold text-white">{t("my_signature", lang)}</h2>
+          <p className="text-sm text-gray-400">{t("signature_hint", lang)}</p>
         </div>
         <RichTextEditor value={signature} onChange={setSignature} showVariables={false} />
         <button onClick={saveSignature} disabled={sigSaveStatus === "saving"} className={btnPrimary}>
-          {sigSaveStatus === "saving" ? "Wird gespeichert…" : sigSaveStatus === "saved" ? "Gespeichert ✓" : sigSaveStatus === "failed" ? "Fehler beim Speichern" : "Signatur speichern"}
+          {sigSaveStatus === "saving" ? t("saving", lang) : sigSaveStatus === "saved" ? t("saved", lang) : sigSaveStatus === "failed" ? t("save_error", lang) : t("save_signature", lang)}
         </button>
       </div>
 
       {/* Test-Versand */}
       <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-2xl p-5 sm:p-6 space-y-4">
         <div>
-          <h2 className="text-lg font-bold text-white">Test-Einladung</h2>
-          <p className="text-sm text-gray-400">Sendet eine Einladung mit dem aktuellen Text an eine einzelne Adresse. Platzhalter: Herr Max Mustermann, Beispiel GmbH, var1/2/3 = Beispiel1/2/3</p>
+          <h2 className="text-lg font-bold text-white">{t("test_invite", lang)}</h2>
+          <p className="text-sm text-gray-400">{t("test_invite_hint", lang)}</p>
         </div>
         <div className="flex flex-wrap gap-2 items-center">
           <input
@@ -617,7 +638,7 @@ export default function ProtectedArea() {
             className={`flex-1 min-w-48 ${input}`}
           />
           <button onClick={sendTestInvite} disabled={testStatus === "sending"} className="rounded-xl bg-yellow-500 hover:bg-yellow-400 px-5 py-2.5 text-gray-900 font-semibold text-sm transition-colors disabled:opacity-40">
-            {testStatus === "sending" ? "Wird gesendet…" : "Test senden"}
+            {testStatus === "sending" ? t("sending", lang) : t("send_test", lang)}
           </button>
         </div>
         {testMessage && <p className={`text-sm ${testStatus === "success" ? "text-green-400" : "text-red-400"}`}>{testMessage}</p>}
@@ -631,14 +652,14 @@ export default function ProtectedArea() {
           className={`${btnPrimary} text-base px-6 py-3`}
         >
           {sendStatus === "sending"
-            ? "Wird versendet…"
+            ? t("sending", lang)
             : leads.some((l) => l.status === "failed")
-              ? `Fehlgeschlagene erneut senden (${pendingLeadsCount} Leads)`
-              : `Termine versenden (${Math.min(pendingLeadsCount, schedulableLeads)} von ${pendingLeadsCount} Leads)`
+              ? `${t("retry_failed", lang)} (${pendingLeadsCount} ${t("leads", lang)})`
+              : `${t("send_appointments", lang)} (${Math.min(pendingLeadsCount, schedulableLeads)} ${t("of", lang)} ${pendingLeadsCount} ${t("leads", lang)})`
           }
         </button>
-        {sendStatus === "success" && <p className="text-green-400 text-sm">Einladungen wurden versendet.</p>}
-        {sendStatus === "failed" && <p className="text-red-400 text-sm">Versand fehlgeschlagen: {error}</p>}
+        {sendStatus === "success" && <p className="text-green-400 text-sm">{t("invites_sent", lang)}</p>}
+        {sendStatus === "failed" && <p className="text-red-400 text-sm">{t("send_failed", lang)} {error}</p>}
       </div>
 
       {/* Versand-Overlay */}
@@ -647,8 +668,8 @@ export default function ProtectedArea() {
           <div className="bg-gray-900 border border-white/10 rounded-2xl p-8 w-full max-w-sm flex flex-col items-center gap-6">
             <div className="w-14 h-14 rounded-full border-4 border-blue-600 border-t-transparent animate-spin" />
             <div className="text-center w-full">
-              <p className="text-white text-xl font-semibold mb-1">Termine werden versendet…</p>
-              <p className="text-gray-400 text-sm mb-5">Bitte nicht schließen oder wegnavigieren.</p>
+              <p className="text-white text-xl font-semibold mb-1">{t("sending_overlay_title", lang)}</p>
+              <p className="text-gray-400 text-sm mb-5">{t("sending_overlay_hint", lang)}</p>
 
               {progress && (() => {
                 const remaining = progress.total - progress.sent
@@ -669,15 +690,15 @@ export default function ProtectedArea() {
                   if (etaSec >= 60) {
                     const m = Math.floor(etaSec / 60)
                     const s = etaSec % 60
-                    etaText = `ca. ${m} Min. ${s} Sek. verbleibend`
+                    etaText = `${t("eta_ca", lang)} ${m} ${t("eta_min_sec", lang)} ${s} ${t("eta_sec", lang)}`
                   } else {
-                    etaText = `ca. ${etaSec} Sek. verbleibend`
+                    etaText = `${t("eta_ca", lang)} ${etaSec} ${t("eta_sec", lang)}`
                   }
                 }
                 return (
                   <>
                     <div className="flex justify-between text-sm text-gray-300 mb-2">
-                      <span>{progress.sent} von {progress.total} versendet</span>
+                      <span>{progress.sent} {t("of", lang)} {progress.total} {t("sent", lang)}</span>
                       <span className="font-semibold text-blue-400">
                         {Math.round((progress.sent / progress.total) * 100)}%
                       </span>
@@ -689,7 +710,7 @@ export default function ProtectedArea() {
                       />
                     </div>
                     {etaText && <p className="text-blue-400 text-sm font-medium mb-2">{etaText}</p>}
-                    <p className="text-gray-500 text-xs">Der Versand läuft absichtlich langsam, um das Spam-Risiko zu reduzieren.</p>
+                    <p className="text-gray-500 text-xs">{t("sending_slow_hint", lang)}</p>
                   </>
                 )
               })()}
@@ -702,35 +723,35 @@ export default function ProtectedArea() {
       {showConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="bg-gray-900 border border-white/10 rounded-2xl shadow-2xl w-full max-w-3xl p-6 space-y-5">
-            <h2 className="text-xl font-bold text-white">Termine wirklich versenden?</h2>
+            <h2 className="text-xl font-bold text-white">{t("confirm_send_title", lang)}</h2>
             <div className="bg-white/5 rounded-xl p-4 space-y-2 text-sm text-gray-300">
               <div className="flex justify-between">
-                <span className="text-gray-400">Anzahl Termine</span>
+                <span className="text-gray-400">{t("confirm_count", lang)}</span>
                 <span className="font-semibold text-white">{Math.min(pendingLeadsCount, schedulableLeads)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-400">Tag</span>
+                <span className="text-gray-400">{t("day", lang)}</span>
                 <span className="font-semibold text-white">{new Date(`${windowDate}T${windowStartTime}`).toLocaleDateString('de-DE', { dateStyle: 'short' })}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-400">Zeitfenster</span>
+                <span className="text-gray-400">{t("confirm_window", lang)}</span>
                 <span className="font-semibold text-white">{windowStartTime} – {windowEndTime} Uhr</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-400">Termindauer</span>
+                <span className="text-gray-400">{t("confirm_duration", lang)}</span>
                 <span className="font-semibold text-white">{durationMinutes} Minuten</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-400">Parallelität</span>
-                <span className="font-semibold text-white">{parallelCount} parallel</span>
+                <span className="text-gray-400">{t("confirm_parallel", lang)}</span>
+                <span className="font-semibold text-white">{parallelCount} {t("confirm_parallel_val", lang)}</span>
               </div>
               {pendingLeadsCount > schedulableLeads && (
-                <p className="text-orange-400 pt-1">{pendingLeadsCount - schedulableLeads} Lead(s) erhalten keinen Slot und werden übersprungen.</p>
+                <p className="text-orange-400 pt-1">{pendingLeadsCount - schedulableLeads} {t("confirm_no_slot", lang)}</p>
               )}
             </div>
 
             <div>
-              <p className="text-xs text-gray-400 mb-2 uppercase tracking-wide">Vorschau Einladungstext</p>
+              <p className="text-xs text-gray-400 mb-2 uppercase tracking-wide">{t("preview_invite", lang)}</p>
               <div
                 className="bg-white rounded-xl p-4 text-gray-900 text-base max-h-[500px] overflow-y-auto [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5"
                 dangerouslySetInnerHTML={{ __html: (signature ? `${eventBody}<br>${signature}` : eventBody)
@@ -743,13 +764,13 @@ export default function ProtectedArea() {
                 onClick={() => { setShowConfirm(false); sendInvites() }}
                 className={`flex-1 ${btnPrimary} py-3 text-base`}
               >
-                Ja, versenden
+                {t("yes_send", lang)}
               </button>
               <button
                 onClick={() => setShowConfirm(false)}
                 className="flex-1 rounded-xl bg-white/10 hover:bg-white/20 px-5 py-3 text-gray-300 font-medium text-base transition-colors"
               >
-                Abbrechen
+                {t("cancel", lang)}
               </button>
             </div>
           </div>

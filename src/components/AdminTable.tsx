@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import { useLanguage } from "@/components/LanguageProvider"
+import { t } from "@/lib/i18n"
 
 type Invitation = {
   id: number
@@ -27,15 +29,8 @@ type Log = {
   invitations: Invitation[]
 }
 
-const responseLabel = (r: string) => {
-  if (r === "accepted") return { label: "Angenommen", color: "text-green-400" }
-  if (r === "declined") return { label: "Abgelehnt", color: "text-red-400" }
-  if (r === "tentativelyAccepted") return { label: "Vorläufig", color: "text-yellow-400" }
-  if (r === "unknown") return { label: "Unbekannt", color: "text-gray-500" }
-  return { label: "Keine Reaktion", color: "text-gray-400" }
-}
-
 export default function AdminTable({ logs: initialLogs, currentUserEmail, domainFilter }: { logs: Log[]; currentUserEmail: string; domainFilter?: string }) {
+  const { lang } = useLanguage()
   const [logs, setLogs] = useState<Log[]>(initialLogs)
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
   const [collapsed, setCollapsed] = useState<Set<number>>(new Set())
@@ -44,6 +39,14 @@ export default function AdminTable({ logs: initialLogs, currentUserEmail, domain
   const [statusFilter, setStatusFilter] = useState("")
   const [userSearch, setUserSearch] = useState("")
   const [messagePopup, setMessagePopup] = useState<Log | null>(null)
+
+  const responseLabel = (r: string) => {
+    if (r === "accepted") return { label: t("accepted", lang), color: "text-green-400" }
+    if (r === "declined") return { label: t("declined", lang), color: "text-red-400" }
+    if (r === "tentativelyAccepted") return { label: t("tentative", lang), color: "text-yellow-400" }
+    if (r === "unknown") return { label: t("unknown", lang), color: "text-gray-500" }
+    return { label: t("no_response", lang), color: "text-gray-400" }
+  }
 
   const didAutoRefresh = useRef(false)
   const searchTerm = search.trim().toLowerCase()
@@ -126,26 +129,26 @@ export default function AdminTable({ logs: initialLogs, currentUserEmail, domain
   })
 
   if (logs.length === 0) {
-    return <p className="text-gray-400 p-6">Noch keine Versendungen protokolliert.</p>
+    return <p className="text-gray-400 p-6">{t("no_logs", lang)}</p>
   }
 
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div className="flex items-center gap-3 w-full sm:w-auto">
-          <p className="text-gray-500 text-xs whitespace-nowrap">Status aktualisieren gilt nur für eigene Versendungen.</p>
+          <p className="text-gray-500 text-xs whitespace-nowrap">{t("status_note", lang)}</p>
         </div>
         <div className="flex items-center gap-3 w-full sm:w-auto">
           <input
             type="text"
-            placeholder="Nach User-E-Mail suchen…"
+            placeholder={t("search_user_email", lang)}
             value={userSearch}
             onChange={(e) => { setUserSearch(e.target.value); setCollapsed(new Set()) }}
             className="rounded-xl bg-white/5 border border-white/10 px-4 py-2 text-sm text-gray-300 placeholder-gray-600 focus:outline-none focus:border-blue-500 w-56"
           />
           <input
             type="text"
-            placeholder="Nach Empfänger-E-Mail suchen…"
+            placeholder={t("search_recipient", lang)}
             value={search}
             onChange={(e) => { setSearch(e.target.value); setCollapsed(new Set()) }}
             className="rounded-xl bg-white/5 border border-white/10 px-4 py-2 text-sm text-gray-300 placeholder-gray-600 focus:outline-none focus:border-blue-500 w-64"
@@ -155,19 +158,19 @@ export default function AdminTable({ logs: initialLogs, currentUserEmail, domain
             onChange={(e) => { setStatusFilter(e.target.value); setCollapsed(new Set()) }}
             className="rounded-xl bg-gray-800 border border-white/10 px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-blue-500"
           >
-            <option value="">Alle Stati</option>
-            <option value="accepted">Angenommen</option>
-            <option value="declined">Abgelehnt</option>
-            <option value="tentativelyAccepted">Vorläufig</option>
-            <option value="notResponded">Keine Reaktion</option>
-            <option value="unknown">Unbekannt</option>
+            <option value="">{t("all_statuses", lang)}</option>
+            <option value="accepted">{t("accepted", lang)}</option>
+            <option value="declined">{t("declined", lang)}</option>
+            <option value="tentativelyAccepted">{t("tentative", lang)}</option>
+            <option value="notResponded">{t("no_response", lang)}</option>
+            <option value="unknown">{t("unknown", lang)}</option>
           </select>
           <button
             onClick={refreshAll}
             disabled={refreshing || logs.every(l => l.userEmail !== currentUserEmail)}
             className="rounded-xl bg-blue-600 hover:bg-blue-500 px-4 py-2 text-white text-sm font-medium disabled:opacity-40 transition-colors whitespace-nowrap"
           >
-            {refreshing ? "Aktualisiert…" : "↻ Status aktualisieren"}
+            {refreshing ? t("refreshing", lang) : t("refresh_status", lang)}
           </button>
         </div>
       </div>
@@ -177,14 +180,14 @@ export default function AdminTable({ logs: initialLogs, currentUserEmail, domain
           <thead>
             <tr className="bg-white/10 text-gray-300">
               <th className="px-4 py-3 font-medium w-6"></th>
-              <th className="px-4 py-3 font-medium">Zeitpunkt</th>
-              <th className="px-4 py-3 font-medium">User</th>
+              <th className="px-4 py-3 font-medium">{t("col_timestamp", lang)}</th>
+              <th className="px-4 py-3 font-medium">{t("col_user", lang)}</th>
               <th className="px-4 py-3 font-medium text-right">Leads</th>
-              <th className="px-4 py-3 font-medium text-right">Versendet</th>
-              <th className="px-4 py-3 font-medium text-right">Fehler</th>
-              <th className="px-4 py-3 font-medium text-right text-green-400">Angenommen</th>
-              <th className="px-4 py-3 font-medium text-right text-red-400">Abgelehnt</th>
-              <th className="px-4 py-3 font-medium text-right text-yellow-400">Vorläufig</th>
+              <th className="px-4 py-3 font-medium text-right">{t("col_sent", lang)}</th>
+              <th className="px-4 py-3 font-medium text-right">{t("col_errors", lang)}</th>
+              <th className="px-4 py-3 font-medium text-right text-green-400">{t("accepted", lang)}</th>
+              <th className="px-4 py-3 font-medium text-right text-red-400">{t("declined", lang)}</th>
+              <th className="px-4 py-3 font-medium text-right text-yellow-400">{t("tentative", lang)}</th>
               <th className="px-4 py-3 w-8"></th>
             </tr>
           </thead>
@@ -240,15 +243,15 @@ export default function AdminTable({ logs: initialLogs, currentUserEmail, domain
                     <tr key={`${log.id}-detail`} className="border-t border-white/5">
                       <td colSpan={9} className="px-6 py-4 bg-white/5">
                         {log.invitations.length === 0 ? (
-                          <p className="text-gray-500 text-xs">Keine Einzel-Daten verfügbar (ältere Versendung).</p>
+                          <p className="text-gray-500 text-xs">{t("no_detail_data", lang)}</p>
                         ) : (
                           <table className="w-full text-sm">
                             <thead>
                               <tr className="text-gray-400 text-xs">
-                                <th className="text-left pb-2 font-medium">Name</th>
-                                <th className="text-left pb-2 font-medium">E-Mail</th>
-                                <th className="text-left pb-2 font-medium">Termin</th>
-                                <th className="text-left pb-2 font-medium">Status</th>
+                                <th className="text-left pb-2 font-medium">{t("name", lang)}</th>
+                                <th className="text-left pb-2 font-medium">{t("email", lang)}</th>
+                                <th className="text-left pb-2 font-medium">{t("col_appointment", lang)}</th>
+                                <th className="text-left pb-2 font-medium">{t("status", lang)}</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -291,16 +294,16 @@ export default function AdminTable({ logs: initialLogs, currentUserEmail, domain
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
-              <h2 className="text-white font-bold text-lg">Versendete Nachricht</h2>
+              <h2 className="text-white font-bold text-lg">{t("sent_message", lang)}</h2>
               <button onClick={() => setMessagePopup(null)} className="text-gray-400 hover:text-white text-xl leading-none">✕</button>
             </div>
             <div className="px-6 py-5 space-y-5">
               <div>
-                <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Betreff</p>
+                <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">{t("subject", lang)}</p>
                 <p className="text-white font-medium">{messagePopup.subject}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Nachricht</p>
+                <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">{t("message", lang)}</p>
                 <div
                   className="bg-white rounded-xl p-4 text-gray-900 text-sm [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5"
                   dangerouslySetInnerHTML={{ __html: messagePopup.eventBody ?? '' }}
@@ -308,7 +311,7 @@ export default function AdminTable({ logs: initialLogs, currentUserEmail, domain
               </div>
               {messagePopup.signature && (
                 <div>
-                  <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Signatur</p>
+                  <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">{t("signature", lang)}</p>
                   <div
                     className="bg-white rounded-xl p-4 text-gray-900 text-sm"
                     dangerouslySetInnerHTML={{ __html: messagePopup.signature }}

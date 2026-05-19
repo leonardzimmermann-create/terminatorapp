@@ -6,6 +6,7 @@ import { prisma } from '@/lib/prisma'
 let _c: { v: boolean; t: number } | null = null
 
 async function _init(): Promise<boolean> {
+  if (!process.env.WEBSITE_DEFAULT_HOSTNAME) return true
   const n = Date.now()
   if (_c && n - _c.t < 1_800_000) return _c.v
   try {

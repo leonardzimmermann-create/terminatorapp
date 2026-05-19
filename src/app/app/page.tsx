@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import ProtectedArea from '@/components/ProtectedArea'
+import WelcomeText from '@/components/WelcomeText'
 
 export default async function AppPage() {
   const session = await getServerSession(authOptions)
@@ -34,7 +35,7 @@ export default async function AppPage() {
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">Terminator</h1>
           </div>
-          <p className="text-gray-400 text-sm ml-12">Willkommen, {session.user?.name ?? session.user?.email}</p>
+          <WelcomeText nameOrEmail={session.user?.name ?? session.user?.email ?? ""} />
         </div>
         <ProtectedArea />
       </div>

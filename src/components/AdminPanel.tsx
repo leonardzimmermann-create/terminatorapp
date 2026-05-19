@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
+import { useLanguage } from "@/components/LanguageProvider"
+import { t } from "@/lib/i18n"
 
 type UserStat = {
   email: string
@@ -37,6 +39,8 @@ export default function AdminPanel({
   blacklist: BlacklistEntry[]
   domainLimits: DomainLimit[]
 }) {
+  const { lang } = useLanguage()
+
   const [blacklist, setBlacklist] = useState(initialBlacklist)
   const [newEmail, setNewEmail] = useState("")
   const [adding, setAdding] = useState(false)
@@ -117,7 +121,7 @@ export default function AdminPanel({
       setBlacklist((prev) => [entry, ...prev])
       setNewEmail("")
     } else {
-      setError("Fehler beim Sperren")
+      setError(t("block_error", lang))
     }
     setAdding(false)
   }
@@ -158,7 +162,7 @@ export default function AdminPanel({
       setNewLimit(100)
       setNewUserLimit("")
     } else {
-      setDomainError("Fehler beim Speichern")
+      setDomainError(t("error", lang))
     }
     setAddingDomain(false)
   }
@@ -173,29 +177,29 @@ export default function AdminPanel({
   }
 
   const fmt = (d: Date) =>
-    new Date(d).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" })
+    new Date(d).toLocaleString(lang === "de" ? "de-DE" : "en-GB", { dateStyle: "short", timeStyle: "short" })
 
   return (
     <div className="space-y-10 mt-6">
       {/* Domain-Sendelimits – zuerst */}
       <section>
-        <h2 className="text-lg font-bold text-white mb-1">Domain-Sendelimits</h2>
-        <p className="text-xs text-gray-500 mb-4">Termine-Limit gilt pro Monat und setzt sich automatisch zurück.</p>
+        <h2 className="text-lg font-bold text-white mb-1">{t("domain_limits", lang)}</h2>
+        <p className="text-xs text-gray-500 mb-4">{t("domain_limits_hint", lang)}</p>
         <div className="flex flex-wrap gap-3 mb-4 items-end">
           <div className="flex flex-col gap-1">
-            <label className="text-xs text-gray-400">Domain</label>
+            <label className="text-xs text-gray-400">{t("domain", lang)}</label>
             <input type="text" placeholder="z.B. kunde.com" value={newDomain} onChange={(e) => setNewDomain(e.target.value)} onKeyDown={(e) => e.key === "Enter" && newDomain && addDomainLimit()} className="rounded-xl bg-white/5 border border-white/10 px-4 py-2 text-sm text-gray-300 placeholder-gray-600 focus:outline-none focus:border-blue-500 w-52" />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-xs text-gray-400">Max. Termine / Monat</label>
+            <label className="text-xs text-gray-400">{t("max_per_month", lang)}</label>
             <input type="number" min={1} value={newLimit} onChange={(e) => setNewLimit(Number(e.target.value))} className="rounded-xl bg-white/5 border border-white/10 px-4 py-2 text-sm text-gray-300 focus:outline-none focus:border-blue-500 w-36" />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-xs text-gray-400">Max. Seats (leer = unbegrenzt)</label>
+            <label className="text-xs text-gray-400">{t("max_seats", lang)}</label>
             <input type="number" min={1} value={newUserLimit} onChange={(e) => setNewUserLimit(e.target.value === "" ? "" : Number(e.target.value))} placeholder="–" className="rounded-xl bg-white/5 border border-white/10 px-4 py-2 text-sm text-gray-300 placeholder-gray-600 focus:outline-none focus:border-blue-500 w-36" />
           </div>
           <button onClick={addDomainLimit} disabled={addingDomain || !newDomain} className="rounded-xl bg-blue-600 hover:bg-blue-500 px-4 py-2 text-white text-sm font-medium disabled:opacity-40 transition-colors">
-            {addingDomain ? "…" : "Hinzufügen"}
+            {addingDomain ? "…" : t("add", lang)}
           </button>
           <div ref={limitsDropdownRef} className="relative w-56 ml-auto">
             <button
@@ -203,7 +207,7 @@ export default function AdminPanel({
               onClick={() => { setLimitsDropdownOpen((o) => !o); setLimitsSearch("") }}
               className="w-full flex items-center justify-between rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm text-gray-300 focus:outline-none hover:border-white/20"
             >
-              <span className={limitsFilter ? "text-white" : "text-gray-500"}>{limitsFilter || "Alle Domains"}</span>
+              <span className={limitsFilter ? "text-white" : "text-gray-500"}>{limitsFilter || t("all_domains", lang)}</span>
               <svg className="w-4 h-4 text-gray-500 ml-2 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
             </button>
             {limitsDropdownOpen && (
@@ -214,7 +218,7 @@ export default function AdminPanel({
                     type="text"
                     value={limitsSearch}
                     onChange={(e) => setLimitsSearch(e.target.value)}
-                    placeholder="Suchen…"
+                    placeholder={t("search", lang)}
                     className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-1.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
                   />
                 </div>
@@ -223,7 +227,7 @@ export default function AdminPanel({
                     onClick={() => { setLimitsFilter(""); setLimitsDropdownOpen(false) }}
                     className={`px-3 py-2 text-sm cursor-pointer transition-colors ${!limitsFilter ? "bg-blue-600/20 text-blue-300 font-medium" : "text-gray-300 hover:bg-white/5"}`}
                   >
-                    Alle Domains
+                    {t("all_domains", lang)}
                   </li>
                   {domainLimits.map((d) => d.domain).sort().filter((d) => d.toLowerCase().includes(limitsSearch.toLowerCase())).map((d) => (
                     <li
@@ -235,7 +239,7 @@ export default function AdminPanel({
                     </li>
                   ))}
                   {domainLimits.filter((d) => d.domain.toLowerCase().includes(limitsSearch.toLowerCase())).length === 0 && (
-                    <li className="px-3 py-2 text-sm text-gray-500 italic">Keine Treffer</li>
+                    <li className="px-3 py-2 text-sm text-gray-500 italic">{t("no_results", lang)}</li>
                   )}
                 </ul>
               </div>
@@ -244,19 +248,19 @@ export default function AdminPanel({
         </div>
         {domainError && <p className="text-red-400 text-xs mb-3">{domainError}</p>}
         {domainLimits.length === 0 ? (
-          <p className="text-gray-500 text-sm">Keine Domain-Limits konfiguriert.</p>
+          <p className="text-gray-500 text-sm">{t("no_domain_limits", lang)}</p>
         ) : (
           <>
           <div className="bg-white/5 backdrop-blur border border-white/10 rounded-2xl overflow-hidden">
             <table className="min-w-full text-left text-sm">
               <thead>
                 <tr className="bg-white/10 text-gray-300">
-                  <th className="px-4 py-3 font-medium">Domain</th>
-                  <th className="px-4 py-3 font-medium text-right">Termine / Mo.</th>
-                  <th className="px-4 py-3 font-medium text-right">Versendet</th>
-                  <th className="px-4 py-3 font-medium text-right">Verbleibend</th>
-                  <th className="px-4 py-3 font-medium text-center">Seats</th>
-                  <th className="px-4 py-3 font-medium text-center">Blacklist</th>
+                  <th className="px-4 py-3 font-medium">{t("domain", lang)}</th>
+                  <th className="px-4 py-3 font-medium text-right">{t("col_per_month", lang)}</th>
+                  <th className="px-4 py-3 font-medium text-right">{t("col_sent", lang)}</th>
+                  <th className="px-4 py-3 font-medium text-right">{t("col_remaining", lang)}</th>
+                  <th className="px-4 py-3 font-medium text-center">{t("col_seats", lang)}</th>
+                  <th className="px-4 py-3 font-medium text-center">{t("col_blacklist", lang)}</th>
                   <th className="px-4 py-3"></th>
                 </tr>
               </thead>
@@ -278,7 +282,7 @@ export default function AdminPanel({
                         </div>
                       </td>
                       <td className={`px-4 py-3 text-right font-semibold ${remaining <= 0 ? "text-red-400" : remaining < 10 ? "text-orange-400" : "text-green-400"}`}>
-                        {remaining <= 0 ? "Limit erreicht" : remaining}
+                        {remaining <= 0 ? t("limit_reached", lang) : remaining}
                       </td>
                       <td className="px-4 py-3 text-center">
                         <div className="flex items-center justify-center gap-1.5">
@@ -288,13 +292,13 @@ export default function AdminPanel({
                       </td>
                       <td className="px-4 py-3 text-center">
                         {d.blacklistCount > 0 ? (
-                          <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg bg-green-600/20 text-green-400 border border-green-500/30 font-medium">Ja ({d.blacklistCount})</span>
+                          <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg bg-green-600/20 text-green-400 border border-green-500/30 font-medium">{t("yes", lang)} ({d.blacklistCount})</span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg bg-white/5 text-gray-500 border border-white/10">Nein</span>
+                          <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg bg-white/5 text-gray-500 border border-white/10">{t("no", lang)}</span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <button onClick={() => deleteDomainLimit(d.domain)} className="text-xs px-2.5 py-1 rounded-lg bg-white/5 text-gray-400 border border-white/10 hover:bg-red-600/20 hover:text-red-400 hover:border-red-500/30 transition-colors">Entfernen</button>
+                        <button onClick={() => deleteDomainLimit(d.domain)} className="text-xs px-2.5 py-1 rounded-lg bg-white/5 text-gray-400 border border-white/10 hover:bg-red-600/20 hover:text-red-400 hover:border-red-500/30 transition-colors">{t("remove", lang)}</button>
                       </td>
                     </tr>
                   )
@@ -309,7 +313,7 @@ export default function AdminPanel({
       {/* Login-Statistiken */}
       <section>
         <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
-          <h2 className="text-lg font-bold text-white">User-Logins</h2>
+          <h2 className="text-lg font-bold text-white">{t("user_logins", lang)}</h2>
           {initialStats.length > 0 && (() => {
             const allDomains = Array.from(new Set(initialStats.map((u) => u.domain))).sort()
             const filtered = allDomains.filter((d) => d.toLowerCase().includes(domainSearch.toLowerCase()))
@@ -320,7 +324,7 @@ export default function AdminPanel({
                   onClick={() => { setDomainDropdownOpen((o) => !o); setDomainSearch("") }}
                   className="w-full flex items-center justify-between rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm text-gray-300 focus:outline-none hover:border-white/20"
                 >
-                  <span className={domainFilter ? "text-white" : "text-gray-500"}>{domainFilter || "Alle Kunden"}</span>
+                  <span className={domainFilter ? "text-white" : "text-gray-500"}>{domainFilter || t("all_customers", lang)}</span>
                   <svg className="w-4 h-4 text-gray-500 ml-2 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                 </button>
                 {domainDropdownOpen && (
@@ -331,7 +335,7 @@ export default function AdminPanel({
                         type="text"
                         value={domainSearch}
                         onChange={(e) => setDomainSearch(e.target.value)}
-                        placeholder="Suchen…"
+                        placeholder={t("search", lang)}
                         className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-1.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
                       />
                     </div>
@@ -340,7 +344,7 @@ export default function AdminPanel({
                         onClick={() => { setDomainFilter(""); setDomainDropdownOpen(false) }}
                         className={`px-3 py-2 text-sm cursor-pointer transition-colors ${!domainFilter ? "bg-blue-600/20 text-blue-300 font-medium" : "text-gray-300 hover:bg-white/5"}`}
                       >
-                        Alle Kunden
+                        {t("all_customers", lang)}
                       </li>
                       {filtered.map((d) => (
                         <li
@@ -351,7 +355,7 @@ export default function AdminPanel({
                           {d}
                         </li>
                       ))}
-                      {filtered.length === 0 && <li className="px-3 py-2 text-sm text-gray-500 italic">Keine Treffer</li>}
+                      {filtered.length === 0 && <li className="px-3 py-2 text-sm text-gray-500 italic">{t("no_results", lang)}</li>}
                     </ul>
                   </div>
                 )}
@@ -360,19 +364,19 @@ export default function AdminPanel({
           })()}
         </div>
         {initialStats.length === 0 ? (
-          <p className="text-gray-500 text-sm">Noch keine Logins erfasst.</p>
+          <p className="text-gray-500 text-sm">{t("no_logins", lang)}</p>
         ) : (
           <div className="bg-white/5 backdrop-blur border border-white/10 rounded-2xl overflow-hidden">
             <table className="min-w-full text-left text-sm">
               <thead>
                 <tr className="bg-white/10 text-gray-300">
-                  <th className="px-4 py-3 font-medium">Name</th>
-                  <th className="px-4 py-3 font-medium">E-Mail</th>
-                  <th className="px-4 py-3 font-medium">Kunde</th>
-                  <th className="px-4 py-3 font-medium">Erstes Login</th>
-                  <th className="px-4 py-3 font-medium">Letztes Login</th>
-                  <th className="px-4 py-3 font-medium text-right">Logins</th>
-                  <th className="px-4 py-3 font-medium text-center">Status</th>
+                  <th className="px-4 py-3 font-medium">{t("name", lang)}</th>
+                  <th className="px-4 py-3 font-medium">{t("email", lang)}</th>
+                  <th className="px-4 py-3 font-medium">{t("col_customer", lang)}</th>
+                  <th className="px-4 py-3 font-medium">{t("col_first_login", lang)}</th>
+                  <th className="px-4 py-3 font-medium">{t("col_last_login", lang)}</th>
+                  <th className="px-4 py-3 font-medium text-right">{t("col_logins", lang)}</th>
+                  <th className="px-4 py-3 font-medium text-center">{t("status", lang)}</th>
                 </tr>
               </thead>
               <tbody>
@@ -387,11 +391,11 @@ export default function AdminPanel({
                     <td className="px-4 py-3 text-center">
                       {isBlocked(u.email) ? (
                         <button onClick={() => unblockEmail(u.email)} className="text-xs px-2.5 py-1 rounded-lg bg-red-600/20 text-red-400 border border-red-500/30 hover:bg-white/5 hover:text-gray-400 hover:border-white/10 transition-colors">
-                          Gesperrt
+                          {t("blocked", lang)}
                         </button>
                       ) : (
                         <button onClick={() => blockEmail(u.email)} className="text-xs px-2.5 py-1 rounded-lg bg-white/5 text-gray-400 border border-white/10 hover:bg-red-600/20 hover:text-red-400 hover:border-red-500/30 transition-colors">
-                          Sperren
+                          {t("block", lang)}
                         </button>
                       )}
                     </td>
@@ -405,11 +409,11 @@ export default function AdminPanel({
 
       {/* Blacklist manuell bearbeiten */}
       <section>
-        <h2 className="text-lg font-bold text-white mb-4">Blacklist</h2>
+        <h2 className="text-lg font-bold text-white mb-4">{t("blacklist", lang)}</h2>
         <div className="flex gap-3 mb-4">
           <input
             type="email"
-            placeholder="E-Mail-Adresse sperren…"
+            placeholder={t("block_email_placeholder", lang)}
             value={newEmail}
             onChange={(e) => setNewEmail(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && newEmail && blockEmail(newEmail)}
@@ -420,19 +424,19 @@ export default function AdminPanel({
             disabled={adding || !newEmail}
             className="rounded-xl bg-red-600 hover:bg-red-500 px-4 py-2 text-white text-sm font-medium disabled:opacity-40 transition-colors"
           >
-            {adding ? "…" : "Sperren"}
+            {adding ? "…" : t("block", lang)}
           </button>
         </div>
         {error && <p className="text-red-400 text-xs mb-3">{error}</p>}
         {blacklist.length === 0 ? (
-          <p className="text-gray-500 text-sm">Keine gesperrten User.</p>
+          <p className="text-gray-500 text-sm">{t("no_blocked_users", lang)}</p>
         ) : (
           <div className="bg-white/5 backdrop-blur border border-white/10 rounded-2xl overflow-hidden">
             <table className="min-w-full text-left text-sm">
               <thead>
                 <tr className="bg-white/10 text-gray-300">
-                  <th className="px-4 py-3 font-medium">E-Mail</th>
-                  <th className="px-4 py-3 font-medium">Gesperrt seit</th>
+                  <th className="px-4 py-3 font-medium">{t("email", lang)}</th>
+                  <th className="px-4 py-3 font-medium">{t("col_blocked_since", lang)}</th>
                   <th className="px-4 py-3"></th>
                 </tr>
               </thead>
@@ -443,7 +447,7 @@ export default function AdminPanel({
                     <td className="px-4 py-3 text-gray-400 whitespace-nowrap">{fmt(w.createdAt)}</td>
                     <td className="px-4 py-3 text-right">
                       <button onClick={() => unblockEmail(w.email)} className="text-xs px-2.5 py-1 rounded-lg bg-white/5 text-gray-400 border border-white/10 hover:bg-green-600/20 hover:text-green-400 hover:border-green-500/30 transition-colors">
-                        Entsperren
+                        {t("unblock", lang)}
                       </button>
                     </td>
                   </tr>

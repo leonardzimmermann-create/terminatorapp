@@ -1,5 +1,7 @@
 "use client"
 
+import { useLanguage } from "@/components/LanguageProvider"
+import { t } from "@/lib/i18n"
 import { useMemo } from "react"
 import { BarChart, Bar, LabelList, XAxis, YAxis, Legend, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell, Tooltip } from "recharts"
 
@@ -17,8 +19,8 @@ const DOMAIN_COLORS = [
   "#06b6d4","#f97316","#ec4899","#14b8a6","#a855f7",
 ]
 
-type TooltipProps = { active?: boolean; payload?: { dataKey: string; value: number; fill: string }[]; label?: string }
-const BarTooltip = ({ active, payload, label }: TooltipProps) => {
+type TooltipProps = { active?: boolean; payload?: { dataKey: string; value: number; fill: string }[]; label?: string; lang: string }
+const BarTooltip = ({ active, payload, label, lang }: TooltipProps) => {
   if (!active || !payload?.length) return null
   const total = payload.reduce((s: number, p: { value: number }) => s + (p.value ?? 0), 0)
   return (
@@ -31,7 +33,7 @@ const BarTooltip = ({ active, payload, label }: TooltipProps) => {
       ))}
       {payload.length > 1 && (
         <p style={{ margin: "6px 0 0", borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: 6, color: "#9ca3af" }}>
-          Gesamt: <strong style={{ color: "#f3f4f6" }}>{total}</strong>
+          {t("total", lang)}: <strong style={{ color: "#f3f4f6" }}>{total}</strong>
         </p>
       )}
     </div>
@@ -40,6 +42,8 @@ const BarTooltip = ({ active, payload, label }: TooltipProps) => {
 
 
 export default function SendCharts({ logs, isAdmin, domainFilter, onDomainFilterChange }: { logs: LogStat[]; isAdmin: boolean; domainFilter: string; onDomainFilterChange: (v: string) => void }) {
+  const { lang } = useLanguage()
+
   const allDomains = useMemo(
     () => Array.from(new Set(logs.map((l) => l.userEmail.split("@")[1] ?? ""))).sort(),
     [logs]
@@ -102,28 +106,28 @@ export default function SendCharts({ logs, isAdmin, domainFilter, onDomainFilter
     }
     const noReaction = Math.max(0, total - accepted - declined - tentative)
     return [
-      { name: "Angenommen", value: accepted, color: "#10b981" },
-      { name: "Abgelehnt", value: declined, color: "#ef4444" },
-      { name: "Vorläufig", value: tentative, color: "#f59e0b" },
-      { name: "Keine Reaktion", value: noReaction, color: "#6b7280" },
+      { name: t("accepted", lang), value: accepted, color: "#10b981" },
+      { name: t("declined", lang), value: declined, color: "#ef4444" },
+      { name: t("tentative", lang), value: tentative, color: "#f59e0b" },
+      { name: t("no_response", lang), value: noReaction, color: "#6b7280" },
     ].filter((d) => d.value > 0)
-  }, [filteredLogs])
+  }, [filteredLogs, lang])
 
   if (logs.length === 0) return null
 
   return (
     <div className="mb-8">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-base font-bold text-white">Auswertung</h2>
+        <h2 className="text-base font-bold text-white">{t("evaluation", lang)}</h2>
         {isAdmin && (
           <div className="flex items-center gap-2">
-            <label className="text-xs text-gray-400">Kunde:</label>
+            <label className="text-xs text-gray-400">{t("customer", lang)}:</label>
             <select
               value={domainFilter}
               onChange={(e) => onDomainFilterChange(e.target.value)}
               className="rounded-xl bg-gray-800 border border-white/10 px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-blue-500"
             >
-              <option value="">Alle Kunden</option>
+              <option value="">{t("all_customers", lang)}</option>
               {allDomains.map((d) => (
                 <option key={d} value={d}>{d}</option>
               ))}
@@ -136,14 +140,14 @@ export default function SendCharts({ logs, isAdmin, domainFilter, onDomainFilter
         {/* Bar Chart */}
         <div className="bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-5 flex-1 min-w-0">
           <p className="text-xs text-gray-400 mb-3">
-            {domainFilter ? `Termine pro User – ${domainFilter}` : "Versendete Termine pro Monat"}
+            {domainFilter ? `${t("chart_per_user", lang)} – ${domainFilter}` : t("chart_per_month", lang)}
           </p>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={chartData} margin={{ top: 24, right: 16, left: 0, bottom: 8 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
               <XAxis dataKey="month" tick={{ fill: "#9ca3af", fontSize: 12 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fill: "#9ca3af", fontSize: 12 }} axisLine={false} tickLine={false} allowDecimals={false} />
-              <Tooltip content={<BarTooltip />} cursor={{ fill: "rgba(255,255,255,0.05)" }} wrapperStyle={{ zIndex: 9999 }} />
+              <Tooltip content={<BarTooltip lang={lang} />} cursor={{ fill: "rgba(255,255,255,0.05)" }} wrapperStyle={{ zIndex: 9999 }} />
               <Legend wrapperStyle={{ color: "#9ca3af", fontSize: 12, paddingTop: 12 }} />
               {chartKeys.map((key, i) => (
                 <Bar
@@ -165,10 +169,10 @@ export default function SendCharts({ logs, isAdmin, domainFilter, onDomainFilter
         {/* Pie Chart */}
         <div className="bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-5 w-96 flex-shrink-0">
           <p className="text-xs text-gray-400 mb-3">
-            Terminantworten{domainFilter ? ` – ${domainFilter}` : ""}
+            {t("chart_responses", lang)}{domainFilter ? ` – ${domainFilter}` : ""}
           </p>
           {pieData.length === 0 ? (
-            <p className="text-gray-500 text-sm text-center py-10">Noch keine Statusdaten vorhanden.</p>
+            <p className="text-gray-500 text-sm text-center py-10">{t("no_status_data", lang)}</p>
           ) : (
             <div className="flex items-center gap-3">
               <PieChart width={230} height={230}>
@@ -180,7 +184,7 @@ export default function SendCharts({ logs, isAdmin, domainFilter, onDomainFilter
                 <Tooltip
                   contentStyle={{ backgroundColor: "#1f2937", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "12px", color: "#f3f4f6" }}
                   wrapperStyle={{ opacity: 1 }}
-                  formatter={(value) => [`${value} Termine`, ""]}
+                  formatter={(value) => [`${value} ${t("appointments", lang)}`, ""]}
                 />
               </PieChart>
               <div className="flex flex-col gap-2 flex-1">
@@ -197,7 +201,7 @@ export default function SendCharts({ logs, isAdmin, domainFilter, onDomainFilter
                   )
                 })}
                 <div className="border-t border-white/10 pt-2 mt-1 flex items-center gap-2">
-                  <span className="text-xs text-gray-500 flex-1">Gesamt</span>
+                  <span className="text-xs text-gray-500 flex-1">{t("total", lang)}</span>
                   <span className="text-xs font-semibold text-white">{pieData.reduce((s, d) => s + d.value, 0)}</span>
                   <span className="w-8" />
                 </div>
