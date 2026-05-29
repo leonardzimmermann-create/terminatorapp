@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react"
 import { useLanguage } from "@/components/LanguageProvider"
-import { t } from "@/lib/i18n"
+import { t, type Lang } from "@/lib/i18n"
 
 type UserStat = {
   email: string
@@ -37,7 +37,7 @@ type DomainLimit = {
   createdAt: Date
 }
 
-function RoleDropdown({ email, role, saving, onChange, lang }: { email: string; role: string; saving: boolean; onChange: (role: string) => void; lang: string }) {
+function RoleDropdown({ email, role, saving, onChange, lang }: { email: string; role: string; saving: boolean; onChange: (role: string) => void; lang: Lang }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
