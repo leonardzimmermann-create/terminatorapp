@@ -13,12 +13,25 @@ export default async function AdminPage() {
   const isAdmin = ADMIN_EMAILS.includes(session.user.email)
   const userDomain = session.user.email.split('@')[1] ?? ''
 
+  const userRole = isAdmin ? 'system_admin' : (
+    (await prisma.userRole.findUnique({ where: { email: session.user.email } }))?.role ?? 'user'
+  )
+  const isUserAdmin = userRole === 'user_admin'
+
   let logs: Awaited<ReturnType<typeof prisma.sendLog.findMany<{ include: { invitations: true } }>>> = []
   let dbError: string | null = null
 
   try {
+    let whereClause: object | undefined
+    if (isAdmin) {
+      whereClause = undefined
+    } else if (isUserAdmin) {
+      whereClause = { userEmail: { endsWith: `@${userDomain}` } }
+    } else {
+      whereClause = { userEmail: session.user.email }
+    }
     logs = await prisma.sendLog.findMany({
-      where: isAdmin ? undefined : { userEmail: { endsWith: `@${userDomain}` } },
+      where: whereClause,
       orderBy: { sentAt: 'desc' },
       include: { invitations: true },
     })

@@ -2,6 +2,7 @@ import { getServerSession } from 'next-auth'
 import { redirect } from 'next/navigation'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { periodStart, nextPeriodStart } from '@/lib/period'
 import AdminPanel from '@/components/AdminPanel'
 import AdminPageHeader from '@/components/AdminPageHeader'
 
@@ -11,22 +12,34 @@ export default async function AdminPage() {
   const session = await getServerSession(authOptions)
   if (!session?.user?.email || !ADMIN_EMAILS.includes(session.user.email)) redirect('/app')
 
-  const now = new Date()
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1)
-
-  const [loginEvents, blacklist, domainLimitsRaw] = await Promise.all([
+  const [loginEvents, blacklist, domainLimitsRaw, userRoles] = await Promise.all([
     prisma.loginEvent.findMany({ orderBy: { createdAt: 'asc' } }),
     prisma.blacklistEntry.findMany({ orderBy: { createdAt: 'desc' } }),
     prisma.domainLimit.findMany({ orderBy: { domain: 'asc' } }),
+    prisma.userRole.findMany(),
   ])
 
   const domainLimits = await Promise.all(
     domainLimitsRaw.map(async (l) => {
+      const firstSendLog = await prisma.sendLog.findFirst({
+        where: { userEmail: { endsWith: `@${l.domain}` } },
+        orderBy: { sentAt: 'asc' },
+        select: { sentAt: true },
+      })
       const [sentCount, blacklistCount, userCount] = await Promise.all([
-        prisma.sentInvitation.count({
-          where: { sendLog: { userEmail: { endsWith: `@${l.domain}` }, sentAt: { gte: monthStart, lt: monthEnd } } },
-        }),
+        firstSendLog
+          ? prisma.sentInvitation.count({
+              where: {
+                sendLog: {
+                  userEmail: { endsWith: `@${l.domain}` },
+                  sentAt: {
+                    gte: periodStart(firstSendLog.sentAt, l.resetIntervalMonths),
+                    lt: nextPeriodStart(firstSendLog.sentAt, l.resetIntervalMonths),
+                  },
+                },
+              },
+            })
+          : Promise.resolve(0),
         prisma.blacklistDomain.count({ where: { customerDomain: l.domain } }),
         prisma.user.count({ where: { email: { endsWith: `@${l.domain}` } } }),
       ])
@@ -54,7 +67,7 @@ export default async function AdminPage() {
     <main className="min-h-screen px-4 py-8 sm:px-8">
       <div className="max-w-6xl mx-auto">
         <AdminPageHeader userCount={userStats.length} blockedCount={blacklist.length} />
-        <AdminPanel userStats={userStats} blacklist={blacklist} domainLimits={domainLimits} />
+        <AdminPanel userStats={userStats} blacklist={blacklist} domainLimits={domainLimits} userRoles={userRoles} />
       </div>
     </main>
   )

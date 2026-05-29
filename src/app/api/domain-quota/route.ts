@@ -1,6 +1,7 @@
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { periodStart, nextPeriodStart } from '@/lib/period'
 
 export async function GET() {
   const session = await getServerSession(authOptions)
@@ -19,12 +20,21 @@ export async function GET() {
     return Response.json({ sentCount: 0, sendLimit: null, remaining: null })
   }
 
-  const now = new Date()
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+  const firstSendLog = await prisma.sendLog.findFirst({
+    where: { userEmail: { endsWith: `@${domain}` } },
+    orderBy: { sentAt: 'asc' },
+    select: { sentAt: true },
+  })
+
+  if (!firstSendLog) {
+    return Response.json({ sentCount: 0, sendLimit: limit.sendLimit, remaining: limit.sendLimit })
+  }
+
+  const winStart = periodStart(firstSendLog.sentAt, limit.resetIntervalMonths)
+  const winEnd = nextPeriodStart(firstSendLog.sentAt, limit.resetIntervalMonths)
 
   const sentCount = await prisma.sentInvitation.count({
-    where: { sendLog: { userEmail: { endsWith: `@${domain}` }, sentAt: { gte: monthStart, lt: monthEnd } } },
+    where: { sendLog: { userEmail: { endsWith: `@${domain}` }, sentAt: { gte: winStart, lt: winEnd } } },
   })
 
   const remaining = limit.sendLimit - sentCount

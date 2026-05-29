@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { periodStart, nextPeriodStart } from '@/lib/period'
 
 type Lead = { id?: number; anrede: string; vorname: string; nachname: string; email: string; firmenname: string; var1?: string; var2?: string; var3?: string }
 
@@ -65,12 +66,24 @@ export async function POST(req: NextRequest) {
   let allowedByDomain = maxLeads
 
   if (domainLimit) {
-    const now = new Date()
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1)
-    const alreadySent = await prisma.sentInvitation.count({
-      where: { sendLog: { userEmail: { endsWith: `@${userDomain}` }, sentAt: { gte: monthStart, lt: monthEnd } } },
+    const firstSendLog = await prisma.sendLog.findFirst({
+      where: { userEmail: { endsWith: `@${userDomain}` } },
+      orderBy: { sentAt: 'asc' },
+      select: { sentAt: true },
     })
+    const alreadySent = firstSendLog
+      ? await prisma.sentInvitation.count({
+          where: {
+            sendLog: {
+              userEmail: { endsWith: `@${userDomain}` },
+              sentAt: {
+                gte: periodStart(firstSendLog.sentAt, domainLimit.resetIntervalMonths),
+                lt: nextPeriodStart(firstSendLog.sentAt, domainLimit.resetIntervalMonths),
+              },
+            },
+          },
+        })
+      : 0
     const remaining = domainLimit.sendLimit - alreadySent
     if (remaining <= 0) {
       domainLimitReached = true

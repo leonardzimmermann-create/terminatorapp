@@ -169,6 +169,8 @@ const translations = {
   all_domains:          { de: "Alle Domains",                              en: "All Domains" },
   no_domain_limits:     { de: "Keine Domain-Limits konfiguriert.",          en: "No domain limits configured." },
   col_per_month:        { de: "Termine / Mo.",                             en: "Appts / Mo." },
+  col_interval:         { de: "Intervall (Mo.)",                           en: "Interval (mo.)" },
+  reset_interval_months:{ de: "Reset-Intervall (Monate)",                  en: "Reset Interval (months)" },
   col_remaining:        { de: "Verbleibend",                               en: "Remaining" },
   col_seats:            { de: "Seats",                                     en: "Seats" },
   col_blacklist:        { de: "Blacklist",                                 en: "Blacklist" },
@@ -190,6 +192,10 @@ const translations = {
   known_users:          { de: "bekannte User",                             en: "known users" },
   back_to_send_overview:{ de: "← Zurück zur Versand-Übersicht",           en: "← Back to Send Overview" },
   azure_app_reg:        { de: "Azure App-Registrierung",                   en: "Azure App Registration" },
+  // ── User roles ────────────────────────────────────────────────────────────
+  col_role:             { de: "Rolle",                                     en: "Role" },
+  role_user:            { de: "User",                                      en: "User" },
+  role_user_admin:      { de: "User Admin",                                en: "User Admin" },
 
   // ── RichTextEditor ────────────────────────────────────────────────────────
   font_default:         { de: "Standard",                                  en: "Default" },

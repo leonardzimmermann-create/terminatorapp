@@ -127,12 +127,13 @@ model BlacklistEntry {
 }
 
 model DomainLimit {
-  id                    Int      @id @default(autoincrement())
-  domain                String   @unique
-  sendLimit             Int
-  userLimit             Int?
+  id                     Int      @id @default(autoincrement())
+  domain                 String   @unique
+  sendLimit              Int
+  userLimit              Int?
+  resetIntervalMonths    Int      @default(1)
   sharepointBlacklistUrl String?
-  createdAt             DateTime @default(now())
+  createdAt              DateTime @default(now())
 }
 
 model BlacklistDomain {
@@ -143,4 +144,11 @@ model BlacklistDomain {
 
   @@unique([customerDomain, blockedDomain])
   @@index([customerDomain])
+}
+
+model UserRole {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  role      String   @default("user")
+  updatedAt DateTime @updatedAt
 }

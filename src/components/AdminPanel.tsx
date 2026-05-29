@@ -13,6 +13,12 @@ type UserStat = {
   count: number
 }
 
+type UserRoleEntry = {
+  id: number
+  email: string
+  role: string
+}
+
 type BlacklistEntry = {
   id: number
   email: string
@@ -24,20 +30,69 @@ type DomainLimit = {
   domain: string
   sendLimit: number
   userLimit: number | null
+  resetIntervalMonths: number
   sentCount: number
   blacklistCount: number
   userCount: number
   createdAt: Date
 }
 
+function RoleDropdown({ email, role, saving, onChange, lang }: { email: string; role: string; saving: boolean; onChange: (role: string) => void; lang: string }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [])
+  const isAdmin = role === "user_admin"
+  return (
+    <div ref={ref} className="relative inline-block">
+      <button
+        type="button"
+        disabled={saving}
+        onClick={() => setOpen((o) => !o)}
+        className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg border font-medium transition-colors disabled:opacity-50 ${
+          isAdmin
+            ? "bg-purple-600/20 text-purple-300 border-purple-500/30 hover:bg-purple-600/30"
+            : "bg-white/5 text-gray-400 border-white/10 hover:bg-white/10"
+        }`}
+      >
+        {saving ? "…" : isAdmin ? t("role_user_admin", lang) : t("role_user", lang)}
+        <svg className="w-3 h-3 opacity-60 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+      </button>
+      {open && (
+        <div className="absolute z-30 mt-1 left-1/2 -translate-x-1/2 w-36 rounded-xl bg-[#1a1f2e] border border-white/10 shadow-2xl overflow-hidden">
+          {[{ value: "user", label: t("role_user", lang) }, { value: "user_admin", label: t("role_user_admin", lang) }].map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => { onChange(opt.value); setOpen(false) }}
+              className={`w-full text-left px-3 py-2 text-xs transition-colors ${
+                role === opt.value
+                  ? "bg-blue-600/20 text-blue-300 font-medium"
+                  : "text-gray-300 hover:bg-white/5"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function AdminPanel({
   userStats: initialStats,
   blacklist: initialBlacklist,
   domainLimits: initialDomainLimits,
+  userRoles: initialUserRoles,
 }: {
   userStats: UserStat[]
   blacklist: BlacklistEntry[]
   domainLimits: DomainLimit[]
+  userRoles: UserRoleEntry[]
 }) {
   const { lang } = useLanguage()
 
@@ -73,30 +128,39 @@ export default function AdminPanel({
   const [newDomain, setNewDomain] = useState("")
   const [newLimit, setNewLimit] = useState(100)
   const [newUserLimit, setNewUserLimit] = useState<number | "">("")
+  const [newResetInterval, setNewResetInterval] = useState(1)
   const [addingDomain, setAddingDomain] = useState(false)
   const [domainError, setDomainError] = useState("")
 
-  // Inline editing state: domain → { sendLimit, userLimit }
-  const [edits, setEdits] = useState<Record<string, { sendLimit: string; userLimit: string }>>({})
+  // Inline editing state: domain → { sendLimit, userLimit, resetIntervalMonths }
+  const [edits, setEdits] = useState<Record<string, { sendLimit: string; userLimit: string; resetIntervalMonths: string }>>({})
+  const editsRef = useRef(edits)
+  editsRef.current = edits
   const [saving, setSaving] = useState<Record<string, boolean>>({})
 
-  const getEdit = (domain: string, field: "sendLimit" | "userLimit", fallback: number | null) =>
+  const getEdit = (domain: string, field: "sendLimit" | "userLimit" | "resetIntervalMonths", fallback: number | null) =>
     edits[domain]?.[field] ?? (fallback != null ? String(fallback) : "")
 
-  const setEdit = (domain: string, field: "sendLimit" | "userLimit", value: string) =>
-    setEdits((prev) => ({ ...prev, [domain]: { ...prev[domain], sendLimit: prev[domain]?.sendLimit ?? "", userLimit: prev[domain]?.userLimit ?? "", [field]: value } }))
+  const setEdit = (domain: string, field: "sendLimit" | "userLimit" | "resetIntervalMonths", value: string) =>
+    setEdits((prev) => ({ ...prev, [domain]: { ...prev[domain], [field]: value } }))
 
-  const saveRow = async (domain: string, currentSendLimit: number, currentUserLimit: number | null) => {
-    const sendLimitStr = edits[domain]?.sendLimit
-    const userLimitStr = edits[domain]?.userLimit
+  const saveRow = async (domain: string, currentSendLimit: number, currentUserLimit: number | null, currentResetIntervalMonths: number) => {
+    const currentEdits = editsRef.current
+    if (!currentEdits[domain]) return
+    const sendLimitStr = currentEdits[domain]?.sendLimit
+    const userLimitStr = currentEdits[domain]?.userLimit
+    const resetIntervalStr = currentEdits[domain]?.resetIntervalMonths
     const sendLimit = sendLimitStr !== undefined ? Number(sendLimitStr) : currentSendLimit
     const userLimit = userLimitStr !== undefined ? (userLimitStr === "" ? null : Number(userLimitStr)) : currentUserLimit
+    const resetIntervalMonths = resetIntervalStr !== undefined
+      ? Math.max(1, Number(resetIntervalStr) || 1)
+      : currentResetIntervalMonths
     if (!Number.isFinite(sendLimit) || sendLimit < 1) return
     setSaving((prev) => ({ ...prev, [domain]: true }))
     const res = await fetch("/api/admin/domain-limits", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ domain, sendLimit, userLimit }),
+      body: JSON.stringify({ domain, sendLimit, userLimit, resetIntervalMonths }),
     })
     if (res.ok) {
       const entry: DomainLimit = await res.json()
@@ -104,6 +168,29 @@ export default function AdminPanel({
       setEdits((prev) => { const next = { ...prev }; delete next[domain]; return next })
     }
     setSaving((prev) => ({ ...prev, [domain]: false }))
+  }
+
+  const [userRoles, setUserRoles] = useState<UserRoleEntry[]>(initialUserRoles)
+  const [savingRole, setSavingRole] = useState<Record<string, boolean>>({})
+
+  const getRole = (email: string) => userRoles.find((r) => r.email === email)?.role ?? "user"
+
+  const setRole = async (email: string, role: string) => {
+    setSavingRole((prev) => ({ ...prev, [email]: true }))
+    const res = await fetch("/api/admin/user-roles", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, role }),
+    })
+    if (res.ok) {
+      const entry: UserRoleEntry = await res.json()
+      setUserRoles((prev) => {
+        const idx = prev.findIndex((r) => r.email === email)
+        if (idx >= 0) { const next = [...prev]; next[idx] = entry; return next }
+        return [...prev, entry]
+      })
+    }
+    setSavingRole((prev) => ({ ...prev, [email]: false }))
   }
 
   const isBlocked = (email: string) => blacklist.some((w) => w.email === email)
@@ -145,6 +232,7 @@ export default function AdminPanel({
         domain: newDomain.trim().toLowerCase(),
         sendLimit: newLimit,
         userLimit: newUserLimit === "" ? null : newUserLimit,
+        resetIntervalMonths: Math.max(1, newResetInterval || 1),
       }),
     })
     if (res.ok) {
@@ -161,6 +249,7 @@ export default function AdminPanel({
       setNewDomain("")
       setNewLimit(100)
       setNewUserLimit("")
+      setNewResetInterval(1)
     } else {
       setDomainError(t("error", lang))
     }
@@ -197,6 +286,10 @@ export default function AdminPanel({
           <div className="flex flex-col gap-1">
             <label className="text-xs text-gray-400">{t("max_seats", lang)}</label>
             <input type="number" min={1} value={newUserLimit} onChange={(e) => setNewUserLimit(e.target.value === "" ? "" : Number(e.target.value))} placeholder="–" className="rounded-xl bg-white/5 border border-white/10 px-4 py-2 text-sm text-gray-300 placeholder-gray-600 focus:outline-none focus:border-blue-500 w-36" />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-gray-400">{t("reset_interval_months", lang)}</label>
+            <input type="number" min={1} value={newResetInterval} onChange={(e) => setNewResetInterval(Math.max(1, Number(e.target.value) || 1))} className="rounded-xl bg-white/5 border border-white/10 px-4 py-2 text-sm text-gray-300 focus:outline-none focus:border-blue-500 w-28" />
           </div>
           <button onClick={addDomainLimit} disabled={addingDomain || !newDomain} className="rounded-xl bg-blue-600 hover:bg-blue-500 px-4 py-2 text-white text-sm font-medium disabled:opacity-40 transition-colors">
             {addingDomain ? "…" : t("add", lang)}
@@ -257,6 +350,7 @@ export default function AdminPanel({
                 <tr className="bg-white/10 text-gray-300">
                   <th className="px-4 py-3 font-medium">{t("domain", lang)}</th>
                   <th className="px-4 py-3 font-medium text-right">{t("col_per_month", lang)}</th>
+                  <th className="px-4 py-3 font-medium text-right">{t("col_interval", lang)}</th>
                   <th className="px-4 py-3 font-medium text-right">{t("col_sent", lang)}</th>
                   <th className="px-4 py-3 font-medium text-right">{t("col_remaining", lang)}</th>
                   <th className="px-4 py-3 font-medium text-center">{t("col_seats", lang)}</th>
@@ -273,7 +367,10 @@ export default function AdminPanel({
                     <tr key={d.domain} className="border-t border-white/5 text-gray-300 odd:bg-white/5">
                       <td className="px-4 py-3 font-mono">{d.domain}</td>
                       <td className="px-4 py-3 text-right">
-                        <input type="number" min={1} value={getEdit(d.domain, "sendLimit", d.sendLimit)} onChange={(e) => setEdit(d.domain, "sendLimit", e.target.value)} onBlur={() => saveRow(d.domain, d.sendLimit, d.userLimit)} onKeyDown={(e) => e.key === "Enter" && saveRow(d.domain, d.sendLimit, d.userLimit)} disabled={saving[d.domain]} className="w-20 text-right rounded-lg bg-white/5 border border-white/10 px-2 py-1 text-sm text-gray-200 focus:outline-none focus:border-blue-500 disabled:opacity-50" />
+                        <input type="number" min={1} value={getEdit(d.domain, "sendLimit", d.sendLimit)} onChange={(e) => setEdit(d.domain, "sendLimit", e.target.value)} onBlur={() => saveRow(d.domain, d.sendLimit, d.userLimit, d.resetIntervalMonths)} onKeyDown={(e) => e.key === "Enter" && saveRow(d.domain, d.sendLimit, d.userLimit, d.resetIntervalMonths)} disabled={saving[d.domain]} className="w-20 text-right rounded-lg bg-white/5 border border-white/10 px-2 py-1 text-sm text-gray-200 focus:outline-none focus:border-blue-500 disabled:opacity-50" />
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <input type="number" min={1} value={getEdit(d.domain, "resetIntervalMonths", d.resetIntervalMonths)} onChange={(e) => setEdit(d.domain, "resetIntervalMonths", e.target.value)} onBlur={() => saveRow(d.domain, d.sendLimit, d.userLimit, d.resetIntervalMonths)} onKeyDown={(e) => e.key === "Enter" && saveRow(d.domain, d.sendLimit, d.userLimit, d.resetIntervalMonths)} disabled={saving[d.domain]} className="w-16 text-right rounded-lg bg-white/5 border border-white/10 px-2 py-1 text-sm text-gray-200 focus:outline-none focus:border-blue-500 disabled:opacity-50" />
                       </td>
                       <td className="px-4 py-3 text-right">
                         <span className={d.sentCount >= d.sendLimit ? "text-red-400 font-semibold" : ""}>{d.sentCount}</span>
@@ -287,7 +384,7 @@ export default function AdminPanel({
                       <td className="px-4 py-3 text-center">
                         <div className="flex items-center justify-center gap-1.5">
                           <span className={`text-xs font-medium ${seatsFull ? "text-red-400" : "text-gray-300"}`}>{d.userCount} /</span>
-                          <input type="number" min={1} value={getEdit(d.domain, "userLimit", d.userLimit)} onChange={(e) => setEdit(d.domain, "userLimit", e.target.value)} onBlur={() => saveRow(d.domain, d.sendLimit, d.userLimit)} onKeyDown={(e) => e.key === "Enter" && saveRow(d.domain, d.sendLimit, d.userLimit)} disabled={saving[d.domain]} placeholder="∞" className="w-14 text-center rounded-lg bg-white/5 border border-white/10 px-2 py-1 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-blue-500 disabled:opacity-50" />
+                          <input type="number" min={1} value={getEdit(d.domain, "userLimit", d.userLimit)} onChange={(e) => setEdit(d.domain, "userLimit", e.target.value)} onBlur={() => saveRow(d.domain, d.sendLimit, d.userLimit, d.resetIntervalMonths)} onKeyDown={(e) => e.key === "Enter" && saveRow(d.domain, d.sendLimit, d.userLimit, d.resetIntervalMonths)} disabled={saving[d.domain]} placeholder="∞" className="w-14 text-center rounded-lg bg-white/5 border border-white/10 px-2 py-1 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-blue-500 disabled:opacity-50" />
                         </div>
                       </td>
                       <td className="px-4 py-3 text-center">
@@ -298,7 +395,14 @@ export default function AdminPanel({
                         )}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <button onClick={() => deleteDomainLimit(d.domain)} className="text-xs px-2.5 py-1 rounded-lg bg-white/5 text-gray-400 border border-white/10 hover:bg-red-600/20 hover:text-red-400 hover:border-red-500/30 transition-colors">{t("remove", lang)}</button>
+                        <div className="flex items-center justify-end gap-2">
+                          <button onClick={() => deleteDomainLimit(d.domain)} className="text-xs px-2.5 py-1 rounded-lg bg-white/5 text-gray-400 border border-white/10 hover:bg-red-600/20 hover:text-red-400 hover:border-red-500/30 transition-colors">{t("remove", lang)}</button>
+                          {edits[d.domain] && (
+                            <button onClick={() => saveRow(d.domain, d.sendLimit, d.userLimit, d.resetIntervalMonths)} disabled={saving[d.domain]} className="text-xs px-2.5 py-1 rounded-lg bg-blue-600/20 text-blue-400 border border-blue-500/30 hover:bg-blue-600/30 transition-colors disabled:opacity-50">
+                              {saving[d.domain] ? "…" : "Speichern"}
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   )
@@ -376,6 +480,7 @@ export default function AdminPanel({
                   <th className="px-4 py-3 font-medium">{t("col_first_login", lang)}</th>
                   <th className="px-4 py-3 font-medium">{t("col_last_login", lang)}</th>
                   <th className="px-4 py-3 font-medium text-right">{t("col_logins", lang)}</th>
+                  <th className="px-4 py-3 font-medium text-center">{t("col_role", lang)}</th>
                   <th className="px-4 py-3 font-medium text-center">{t("status", lang)}</th>
                 </tr>
               </thead>
@@ -388,6 +493,15 @@ export default function AdminPanel({
                     <td className="px-4 py-3 whitespace-nowrap text-gray-400">{fmt(u.firstLogin)}</td>
                     <td className="px-4 py-3 whitespace-nowrap">{fmt(u.lastLogin)}</td>
                     <td className="px-4 py-3 text-right">{u.count}</td>
+                    <td className="px-4 py-3 text-center">
+                      <RoleDropdown
+                        email={u.email}
+                        role={getRole(u.email)}
+                        saving={!!savingRole[u.email]}
+                        onChange={(role) => setRole(u.email, role)}
+                        lang={lang}
+                      />
+                    </td>
                     <td className="px-4 py-3 text-center">
                       {isBlocked(u.email) ? (
                         <button onClick={() => unblockEmail(u.email)} className="text-xs px-2.5 py-1 rounded-lg bg-red-600/20 text-red-400 border border-red-500/30 hover:bg-white/5 hover:text-gray-400 hover:border-white/10 transition-colors">
