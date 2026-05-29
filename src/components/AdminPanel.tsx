@@ -471,29 +471,39 @@ export default function AdminPanel({
           <p className="text-gray-500 text-sm">{t("no_logins", lang)}</p>
         ) : (
           <div className="bg-white/5 backdrop-blur border border-white/10 rounded-2xl overflow-hidden">
-            <table className="min-w-full text-left text-sm">
+            <table className="w-full table-fixed text-left text-sm">
+              <colgroup>
+                <col className="w-[13%]" />
+                <col className="w-[22%]" />
+                <col className="w-[15%]" />
+                <col className="w-[13%]" />
+                <col className="w-[13%]" />
+                <col className="w-[7%]" />
+                <col className="w-[10%]" />
+                <col className="w-[7%]" />
+              </colgroup>
               <thead>
                 <tr className="bg-white/10 text-gray-300">
-                  <th className="px-4 py-3 font-medium">{t("name", lang)}</th>
-                  <th className="px-4 py-3 font-medium">{t("email", lang)}</th>
-                  <th className="px-4 py-3 font-medium">{t("col_customer", lang)}</th>
-                  <th className="px-4 py-3 font-medium">{t("col_first_login", lang)}</th>
-                  <th className="px-4 py-3 font-medium">{t("col_last_login", lang)}</th>
-                  <th className="px-4 py-3 font-medium text-right">{t("col_logins", lang)}</th>
-                  <th className="px-4 py-3 font-medium text-center">{t("col_role", lang)}</th>
-                  <th className="px-4 py-3 font-medium text-center">{t("status", lang)}</th>
+                  <th className="px-3 py-3 font-medium">{t("name", lang)}</th>
+                  <th className="px-3 py-3 font-medium">{t("email", lang)}</th>
+                  <th className="px-3 py-3 font-medium">{t("col_customer", lang)}</th>
+                  <th className="px-3 py-3 font-medium">{t("col_first_login", lang)}</th>
+                  <th className="px-3 py-3 font-medium">{t("col_last_login", lang)}</th>
+                  <th className="px-3 py-3 font-medium text-right">{t("col_logins", lang)}</th>
+                  <th className="px-3 py-3 font-medium text-center">{t("col_role", lang)}</th>
+                  <th className="px-3 py-3 font-medium text-center">{t("status", lang)}</th>
                 </tr>
               </thead>
               <tbody>
                 {(domainFilter ? initialStats.filter((u) => u.domain === domainFilter) : initialStats).map((u) => (
                   <tr key={u.email} className="border-t border-white/5 text-gray-300 odd:bg-white/5">
-                    <td className="px-4 py-3">{u.userName ?? "–"}</td>
-                    <td className="px-4 py-3 text-gray-400">{u.email}</td>
-                    <td className="px-4 py-3 text-gray-400">{u.domain}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-gray-400">{fmt(u.firstLogin)}</td>
-                    <td className="px-4 py-3 whitespace-nowrap">{fmt(u.lastLogin)}</td>
-                    <td className="px-4 py-3 text-right">{u.count}</td>
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-3 py-3 truncate">{u.userName ?? "–"}</td>
+                    <td className="px-3 py-3 truncate text-gray-400" title={u.email}>{u.email}</td>
+                    <td className="px-3 py-3 truncate text-gray-400">{u.domain}</td>
+                    <td className="px-3 py-3 whitespace-nowrap text-gray-400 text-xs">{fmt(u.firstLogin)}</td>
+                    <td className="px-3 py-3 whitespace-nowrap text-xs">{fmt(u.lastLogin)}</td>
+                    <td className="px-3 py-3 text-right">{u.count}</td>
+                    <td className="px-3 py-3 text-center">
                       <RoleDropdown
                         email={u.email}
                         role={getRole(u.email)}
@@ -502,13 +512,13 @@ export default function AdminPanel({
                         lang={lang}
                       />
                     </td>
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-3 py-3 text-center">
                       {isBlocked(u.email) ? (
-                        <button onClick={() => unblockEmail(u.email)} className="text-xs px-2.5 py-1 rounded-lg bg-red-600/20 text-red-400 border border-red-500/30 hover:bg-white/5 hover:text-gray-400 hover:border-white/10 transition-colors">
+                        <button onClick={() => unblockEmail(u.email)} className="text-xs px-2 py-1 rounded-lg bg-red-600/20 text-red-400 border border-red-500/30 hover:bg-white/5 hover:text-gray-400 hover:border-white/10 transition-colors">
                           {t("blocked", lang)}
                         </button>
                       ) : (
-                        <button onClick={() => blockEmail(u.email)} className="text-xs px-2.5 py-1 rounded-lg bg-white/5 text-gray-400 border border-white/10 hover:bg-red-600/20 hover:text-red-400 hover:border-red-500/30 transition-colors">
+                        <button onClick={() => blockEmail(u.email)} className="text-xs px-2 py-1 rounded-lg bg-white/5 text-gray-400 border border-white/10 hover:bg-red-600/20 hover:text-red-400 hover:border-red-500/30 transition-colors">
                           {t("block", lang)}
                         </button>
                       )}
