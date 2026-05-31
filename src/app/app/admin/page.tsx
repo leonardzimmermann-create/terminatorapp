@@ -19,6 +19,15 @@ export default async function AdminPage() {
     prisma.userRole.findMany(),
   ])
 
+  // Erstes Login pro Domain aus den bereits geladenen LoginEvents ableiten
+  const domainFirstLoginMap = new Map<string, Date>()
+  for (const e of loginEvents) {
+    const domain = e.userEmail.split('@')[1] ?? ''
+    if (domain && !domainFirstLoginMap.has(domain)) {
+      domainFirstLoginMap.set(domain, e.createdAt)
+    }
+  }
+
   const domainLimits = await Promise.all(
     domainLimitsRaw.map(async (l) => {
       const firstSendLog = await prisma.sendLog.findFirst({
@@ -43,7 +52,8 @@ export default async function AdminPage() {
         prisma.blacklistDomain.count({ where: { customerDomain: l.domain } }),
         prisma.user.count({ where: { email: { endsWith: `@${l.domain}` } } }),
       ])
-      return { ...l, sentCount, blacklistCount, userCount }
+      const firstLogin = domainFirstLoginMap.get(l.domain) ?? null
+      return { ...l, sentCount, blacklistCount, userCount, firstLogin }
     })
   )
 
