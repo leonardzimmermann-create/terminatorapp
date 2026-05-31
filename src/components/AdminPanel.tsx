@@ -35,6 +35,7 @@ type DomainLimit = {
   blacklistCount: number
   userCount: number
   firstLogin: Date | null
+  firstSend: Date | null
   createdAt: Date
 }
 
@@ -350,7 +351,7 @@ export default function AdminPanel({
               <thead>
                 <tr className="bg-white/10 text-gray-300">
                   <th className="px-4 py-3 font-medium">{t("domain", lang)}</th>
-                  <th className="px-4 py-3 font-medium whitespace-nowrap">{t("col_first_login", lang)}</th>
+                  <th className="px-4 py-3 font-medium whitespace-nowrap">Erste Aktivitäten</th>
                   <th className="px-4 py-3 font-medium text-right">{t("col_per_month", lang)}</th>
                   <th className="px-4 py-3 font-medium text-right">{t("col_interval", lang)}</th>
                   <th className="px-4 py-3 font-medium text-right">{t("col_sent", lang)}</th>
@@ -368,8 +369,15 @@ export default function AdminPanel({
                   return (
                     <tr key={d.domain} className="border-t border-white/5 text-gray-300 odd:bg-white/5">
                       <td className="px-4 py-3 font-mono">{d.domain}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-gray-400 text-xs">
-                        {d.firstLogin ? new Date(d.firstLogin).toLocaleDateString(lang === "de" ? "de-DE" : "en-GB", { dateStyle: "short" }) : <span className="text-gray-600">–</span>}
+                      <td className="px-4 py-3 text-xs space-y-1">
+                        <div className="flex items-center gap-1.5 whitespace-nowrap text-gray-400">
+                          <span className="text-gray-600">Login:</span>
+                          {d.firstLogin ? new Date(d.firstLogin).toLocaleDateString(lang === "de" ? "de-DE" : "en-GB", { dateStyle: "short" }) : <span className="text-gray-600">–</span>}
+                        </div>
+                        <div className="flex items-center gap-1.5 whitespace-nowrap text-gray-400">
+                          <span className="text-gray-600">Versand:</span>
+                          {d.firstSend ? new Date(d.firstSend).toLocaleDateString(lang === "de" ? "de-DE" : "en-GB", { dateStyle: "short" }) : <span className="text-gray-600">–</span>}
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-right">
                         <input type="number" min={1} value={getEdit(d.domain, "sendLimit", d.sendLimit)} onChange={(e) => setEdit(d.domain, "sendLimit", e.target.value)} onBlur={() => saveRow(d.domain, d.sendLimit, d.userLimit, d.resetIntervalMonths)} onKeyDown={(e) => e.key === "Enter" && saveRow(d.domain, d.sendLimit, d.userLimit, d.resetIntervalMonths)} disabled={saving[d.domain]} className="w-20 text-right rounded-lg bg-white/5 border border-white/10 px-2 py-1 text-sm text-gray-200 focus:outline-none focus:border-blue-500 disabled:opacity-50" />

@@ -53,7 +53,8 @@ export default async function AdminPage() {
         prisma.user.count({ where: { email: { endsWith: `@${l.domain}` } } }),
       ])
       const firstLogin = domainFirstLoginMap.get(l.domain) ?? null
-      return { ...l, sentCount, blacklistCount, userCount, firstLogin }
+      const firstSend = firstSendLog?.sentAt ?? null
+      return { ...l, sentCount, blacklistCount, userCount, firstLogin, firstSend }
     })
   )
 
