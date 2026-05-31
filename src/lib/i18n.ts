@@ -177,7 +177,7 @@ const translations = {
   user_logins:          { de: "User-Logins",                               en: "User Logins" },
   no_logins:            { de: "Noch keine Logins erfasst.",                en: "No logins recorded yet." },
   col_customer:         { de: "Kunde",                                     en: "Customer" },
-  col_first_login:      { de: "Erstes Login",                              en: "First Login" },
+  col_first_login:      { de: "Erster Login",                              en: "First Login" },
   col_last_login:       { de: "Letztes Login",                             en: "Last Login" },
   col_logins:           { de: "Logins",                                    en: "Logins" },
   blocked:              { de: "Gesperrt",                                  en: "Blocked" },
