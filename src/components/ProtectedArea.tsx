@@ -74,6 +74,7 @@ export default function ProtectedArea() {
   const [parallelCountRaw, setParallelCountRaw] = useState<string>("1")
   const [eventBody, setEventBody] = useState<string>("<p>Hallo {{vorname}},</p><p>ich möchte Sie zu einem Teams-Termin einladen.</p>")
   const [quota, setQuota] = useState<{ sentCount: number; sendLimit: number | null; remaining: number | null } | null>(null)
+  const [previouslySent, setPreviouslySent] = useState<Record<string, string>>({})
 
   useEffect(() => {
     let cancelled = false
@@ -197,6 +198,18 @@ export default function ProtectedArea() {
     setTimeout(() => setSigSaveStatus("idle"), 2500)
   }
 
+  const checkPreviouslySent = async (emails: string[]) => {
+    try {
+      const res = await fetch("/api/check-previous-invitations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ emails }),
+      })
+      const data = await res.json()
+      if (data.previouslySent) setPreviouslySent(data.previouslySent)
+    } catch {}
+  }
+
   const parseCsv = (text: string) => {
     const lines = text.trim().split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
     if (lines.length < 2) { setError(t("csv_min_row", lang)); return }
@@ -214,7 +227,9 @@ export default function ProtectedArea() {
       items.push({ id: i, anrede, vorname, nachname, email, firmenname, var1, var2, var3, status: "pending" })
     }
     setError(null)
+    setPreviouslySent({})
     setLeads(items)
+    checkPreviouslySent(items.map((i) => i.email))
   }
 
   const handleFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -429,7 +444,9 @@ export default function ProtectedArea() {
                   if (!vorname || !nachname || !email) { setError(`Zeile ${i + 1}: Vorname, Nachname und Email dürfen nicht leer sein.`); return }
                   items.push({ id: i + 1, anrede, vorname, nachname, email, firmenname, var1, var2, var3, status: "pending" })
                 }
-                setError(null); setLeads(items)
+                setPreviouslySent({})
+                setLeads(items)
+                checkPreviouslySent(items.map((i) => i.email))
               }}
               readOnly
             />
@@ -452,10 +469,13 @@ export default function ProtectedArea() {
                 </tr>
               </thead>
               <tbody>
-                {leads.map((lead) => (
+                {leads.map((lead) => {
+                  const wasPreviouslySent = !lead.status || lead.status === "pending" ? previouslySent[lead.email] : undefined
+                  return (
                   <tr key={lead.id} className={
                     lead.status === "success" ? "bg-green-500/10 text-green-300"
                     : lead.status === "failed" ? "bg-red-500/10 text-red-300"
+                    : wasPreviouslySent ? "bg-red-500/10 text-red-300"
                     : "text-gray-300 odd:bg-white/5"
                   }>
                     <td className="px-2 py-1 text-xs">{lead.id}</td>
@@ -468,9 +488,16 @@ export default function ProtectedArea() {
                     <td className="px-2 py-1 text-xs">{lead.var2 ?? "–"}</td>
                     <td className="px-2 py-1 text-xs">{lead.var3 ?? "–"}</td>
                     <td className="px-2 py-1 text-xs">{lead.status ?? "–"}</td>
-                    <td className="px-2 py-1 text-xs">{lead.message ?? "–"}</td>
+                    <td className="px-2 py-1 text-xs">
+                      {lead.message
+                        ? lead.message
+                        : wasPreviouslySent
+                          ? `⚠ Bereits kontaktiert am ${new Date(wasPreviouslySent).toLocaleDateString("de-DE")}`
+                          : "–"}
+                    </td>
                   </tr>
-                ))}
+                  )
+                })}
               </tbody>
             </table>
           </div>
