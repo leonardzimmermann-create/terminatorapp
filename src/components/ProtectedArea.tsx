@@ -359,6 +359,8 @@ export default function ProtectedArea() {
   const slotMs = durationMinutes * 60 * 1000
   const availableSlots = slotMs > 0 && rangeMs > 0 ? Math.floor(rangeMs / slotMs) : 0
   const schedulableLeads = availableSlots * parallelCount
+  const removeLead = (id: number) => setLeads((prev) => prev.filter((l) => l.id !== id))
+
   // In retry mode only count leads that haven't succeeded yet
   const pendingLeadsCount = leads.some((l) => l.status === "failed")
     ? leads.filter((l) => l.status === "failed").length
@@ -463,7 +465,7 @@ export default function ProtectedArea() {
             <table className="min-w-full text-left text-sm">
               <thead>
                 <tr className="bg-white/10 text-gray-300">
-                  {["#", t("col_salutation",lang), t("col_firstname",lang), t("col_lastname",lang), t("email",lang), t("col_company",lang), "Var 1", "Var 2", "Var 3", t("status",lang), t("col_details",lang)].map((h) => (
+                  {["#", t("col_salutation",lang), t("col_firstname",lang), t("col_lastname",lang), t("email",lang), t("col_company",lang), "Var 1", "Var 2", "Var 3", t("status",lang), t("col_details",lang), ""].map((h) => (
                     <th key={h} className="px-2 py-2 font-medium whitespace-nowrap text-xs">{h}</th>
                   ))}
                 </tr>
@@ -494,6 +496,17 @@ export default function ProtectedArea() {
                         : wasPreviouslySent
                           ? `⚠ Bereits kontaktiert am ${new Date(wasPreviouslySent).toLocaleDateString("de-DE")}`
                           : "–"}
+                    </td>
+                    <td className="px-2 py-1 text-xs">
+                      {wasPreviouslySent && (
+                        <button
+                          onClick={() => removeLead(lead.id)}
+                          title="Aus Liste entfernen"
+                          className="rounded px-2 py-0.5 bg-red-600/80 hover:bg-red-600 text-white text-xs transition-colors"
+                        >
+                          Entfernen
+                        </button>
+                      )}
                     </td>
                   </tr>
                   )
