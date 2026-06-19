@@ -13,10 +13,10 @@ export default async function AdminPage() {
   const isAdmin = ADMIN_EMAILS.includes(session.user.email)
   const userDomain = session.user.email.split('@')[1] ?? ''
 
-  const userRole = isAdmin ? 'system_admin' : (
-    (await prisma.userRole.findUnique({ where: { email: session.user.email } }))?.role ?? 'user'
-  )
+  const userRoleEntry = await prisma.userRole.findUnique({ where: { email: session.user.email } })
+  const userRole = isAdmin ? 'system_admin' : (userRoleEntry?.role ?? 'user')
   const isUserAdmin = userRole === 'user_admin'
+  const canExport = userRoleEntry?.canExport ?? false
 
   let logs: Awaited<ReturnType<typeof prisma.sendLog.findMany<{ include: { invitations: true } }>>> = []
   let dbError: string | null = null
@@ -47,7 +47,7 @@ export default async function AdminPage() {
         {dbError ? (
           <div className="bg-red-900/30 border border-red-500/30 rounded-xl p-4 text-red-300 text-sm font-mono">{dbError}</div>
         ) : (
-          <VersandClient logs={logs} isAdmin={isAdmin} currentUserEmail={session.user.email} />
+          <VersandClient logs={logs} isAdmin={isAdmin} currentUserEmail={session.user.email} canExport={canExport} />
         )}
       </div>
     </main>

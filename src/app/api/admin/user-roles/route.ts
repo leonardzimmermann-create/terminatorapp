@@ -21,15 +21,25 @@ export async function POST(req: NextRequest) {
     return new Response(JSON.stringify({ error: 'Nicht autorisiert' }), { status: 403 })
   }
 
-  const { email, role } = await req.json()
-  if (!email || !['user', 'user_admin'].includes(role)) {
+  const { email, role, canExport } = await req.json()
+  if (!email) {
     return new Response(JSON.stringify({ error: 'Ungültige Eingabe' }), { status: 400 })
   }
+  if (role !== undefined && !['user', 'user_admin'].includes(role)) {
+    return new Response(JSON.stringify({ error: 'Ungültige Rolle' }), { status: 400 })
+  }
+  if (canExport !== undefined && typeof canExport !== 'boolean') {
+    return new Response(JSON.stringify({ error: 'Ungültiger canExport-Wert' }), { status: 400 })
+  }
+
+  const updateData: { role?: string; canExport?: boolean } = {}
+  if (role !== undefined) updateData.role = role
+  if (canExport !== undefined) updateData.canExport = canExport
 
   const entry = await prisma.userRole.upsert({
     where: { email },
-    update: { role },
-    create: { email, role },
+    update: updateData,
+    create: { email, role: role ?? 'user', canExport: canExport ?? false },
   })
 
   return Response.json(entry)

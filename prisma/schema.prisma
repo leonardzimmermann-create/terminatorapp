@@ -150,5 +150,6 @@ model UserRole {
   id        Int      @id @default(autoincrement())
   email     String   @unique
   role      String   @default("user")
+  canExport Boolean  @default(false)
   updatedAt DateTime @updatedAt
 }

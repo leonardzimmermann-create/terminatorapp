@@ -1,10 +1,7 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
 import './globals.css'
 import SessionProvider from '@/components/SessionProvider'
 import LanguageProvider from '@/components/LanguageProvider'
-
-const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'Entscheider-Termine per Knopfdruck',
@@ -18,7 +15,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="de">
-      <body className={inter.className}>
+      <body style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" }}>
         <SessionProvider>
           <LanguageProvider>{children}</LanguageProvider>
         </SessionProvider>

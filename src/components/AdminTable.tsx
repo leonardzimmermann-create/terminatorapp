@@ -29,7 +29,7 @@ type Log = {
   invitations: Invitation[]
 }
 
-export default function AdminTable({ logs: initialLogs, currentUserEmail, domainFilter }: { logs: Log[]; currentUserEmail: string; domainFilter?: string }) {
+export default function AdminTable({ logs: initialLogs, currentUserEmail, domainFilter, canExport }: { logs: Log[]; currentUserEmail: string; domainFilter?: string; canExport?: boolean }) {
   const { lang } = useLanguage()
   const [logs, setLogs] = useState<Log[]>(initialLogs)
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
@@ -128,6 +128,48 @@ export default function AdminTable({ logs: initialLogs, currentUserEmail, domain
     refreshAll()
   })
 
+  const responseText = (r: string) => {
+    if (r === "accepted") return "Angenommen"
+    if (r === "declined") return "Abgelehnt"
+    if (r === "tentativelyAccepted") return "Vorläufig"
+    if (r === "unknown") return "Unbekannt"
+    return "Keine Reaktion"
+  }
+
+  const exportToExcel = async () => {
+    const XLSX = await import("xlsx")
+    const userDomain = currentUserEmail.split("@")[1] ?? ""
+    const ownTenantLogs = logs.filter((log) => log.userEmail.split("@")[1] === userDomain)
+    const rows = ownTenantLogs.flatMap((log) => {
+      if (log.invitations.length === 0) {
+        return [{
+          Versandzeit: new Date(log.sentAt).toLocaleString("de-DE"),
+          Absender: log.userEmail,
+          "Empfänger Name": "",
+          "Empfänger E-Mail": "",
+          "Termin Start": "",
+          "Termin Ende": "",
+          Status: "",
+          Betreff: log.subject ?? "",
+        }]
+      }
+      return log.invitations.map((inv) => ({
+        Versandzeit: new Date(log.sentAt).toLocaleString("de-DE"),
+        Absender: log.userEmail,
+        "Empfänger Name": inv.leadName,
+        "Empfänger E-Mail": inv.leadEmail,
+        "Termin Start": inv.slotStart ? new Date(inv.slotStart).toLocaleString("de-DE") : "",
+        "Termin Ende": inv.slotEnd ? new Date(inv.slotEnd).toLocaleString("de-DE") : "",
+        Status: responseText(inv.response),
+        Betreff: log.subject ?? "",
+      }))
+    })
+    const ws = XLSX.utils.json_to_sheet(rows)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, "Versendungen")
+    XLSX.writeFile(wb, `versendungen_${new Date().toISOString().slice(0, 10)}.xlsx`)
+  }
+
   if (logs.length === 0) {
     return <p className="text-gray-400 p-6">{t("no_logs", lang)}</p>
   }
@@ -165,6 +207,21 @@ export default function AdminTable({ logs: initialLogs, currentUserEmail, domain
             <option value="notResponded">{t("no_response", lang)}</option>
             <option value="unknown">{t("unknown", lang)}</option>
           </select>
+          {canExport && (
+            <button
+              onClick={exportToExcel}
+              title={t("export_excel", lang)}
+              className="rounded-xl bg-white/5 hover:bg-green-600/20 border border-white/10 hover:border-green-500/30 px-3 py-2 text-gray-400 hover:text-green-400 text-sm transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+                <polyline points="10 9 9 9 8 9"/>
+              </svg>
+            </button>
+          )}
           <button
             onClick={refreshAll}
             disabled={refreshing || logs.every(l => l.userEmail !== currentUserEmail)}

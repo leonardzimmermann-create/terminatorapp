@@ -33,17 +33,19 @@ export default function VersandClient({
   logs,
   isAdmin,
   currentUserEmail,
+  canExport,
 }: {
   logs: Log[]
   isAdmin: boolean
   currentUserEmail: string
+  canExport: boolean
 }) {
   const [domainFilter, setDomainFilter] = useState("")
 
   return (
     <>
       <SendCharts logs={logs} isAdmin={isAdmin} domainFilter={domainFilter} onDomainFilterChange={setDomainFilter} />
-      <AdminTable logs={logs} currentUserEmail={currentUserEmail} domainFilter={isAdmin ? domainFilter : undefined} />
+      <AdminTable logs={logs} currentUserEmail={currentUserEmail} domainFilter={isAdmin ? domainFilter : undefined} canExport={canExport} />
     </>
   )
 }

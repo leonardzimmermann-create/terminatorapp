@@ -17,6 +17,7 @@ type UserRoleEntry = {
   id: number
   email: string
   role: string
+  canExport: boolean
 }
 
 type BlacklistEntry = {
@@ -174,8 +175,10 @@ export default function AdminPanel({
 
   const [userRoles, setUserRoles] = useState<UserRoleEntry[]>(initialUserRoles)
   const [savingRole, setSavingRole] = useState<Record<string, boolean>>({})
+  const [savingExport, setSavingExport] = useState<Record<string, boolean>>({})
 
   const getRole = (email: string) => userRoles.find((r) => r.email === email)?.role ?? "user"
+  const getCanExport = (email: string) => userRoles.find((r) => r.email === email)?.canExport ?? false
 
   const setRole = async (email: string, role: string) => {
     setSavingRole((prev) => ({ ...prev, [email]: true }))
@@ -193,6 +196,25 @@ export default function AdminPanel({
       })
     }
     setSavingRole((prev) => ({ ...prev, [email]: false }))
+  }
+
+  const toggleExport = async (email: string) => {
+    const current = getCanExport(email)
+    setSavingExport((prev) => ({ ...prev, [email]: true }))
+    const res = await fetch("/api/admin/user-roles", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, canExport: !current }),
+    })
+    if (res.ok) {
+      const entry: UserRoleEntry = await res.json()
+      setUserRoles((prev) => {
+        const idx = prev.findIndex((r) => r.email === email)
+        if (idx >= 0) { const next = [...prev]; next[idx] = entry; return next }
+        return [...prev, entry]
+      })
+    }
+    setSavingExport((prev) => ({ ...prev, [email]: false }))
   }
 
   const isBlocked = (email: string) => blacklist.some((w) => w.email === email)
@@ -486,13 +508,14 @@ export default function AdminPanel({
           <div className="bg-white/5 backdrop-blur border border-white/10 rounded-2xl overflow-hidden">
             <table className="w-full table-fixed text-left text-sm">
               <colgroup>
+                <col className="w-[12%]" />
+                <col className="w-[20%]" />
                 <col className="w-[13%]" />
-                <col className="w-[22%]" />
-                <col className="w-[15%]" />
-                <col className="w-[13%]" />
-                <col className="w-[13%]" />
-                <col className="w-[7%]" />
+                <col className="w-[12%]" />
+                <col className="w-[12%]" />
+                <col className="w-[6%]" />
                 <col className="w-[10%]" />
+                <col className="w-[8%]" />
                 <col className="w-[7%]" />
               </colgroup>
               <thead>
@@ -504,6 +527,7 @@ export default function AdminPanel({
                   <th className="px-3 py-3 font-medium">{t("col_last_login", lang)}</th>
                   <th className="px-3 py-3 font-medium text-right">{t("col_logins", lang)}</th>
                   <th className="px-3 py-3 font-medium text-center">{t("col_role", lang)}</th>
+                  <th className="px-3 py-3 font-medium text-center">{t("col_export", lang)}</th>
                   <th className="px-3 py-3 font-medium text-center">{t("status", lang)}</th>
                 </tr>
               </thead>
@@ -524,6 +548,23 @@ export default function AdminPanel({
                         onChange={(role) => setRole(u.email, role)}
                         lang={lang}
                       />
+                    </td>
+                    <td className="px-3 py-3 text-center">
+                      <button
+                        type="button"
+                        disabled={!!savingExport[u.email]}
+                        onClick={() => toggleExport(u.email)}
+                        title={t("col_export", lang)}
+                        className={`inline-flex items-center justify-center w-8 h-5 rounded-full border transition-colors disabled:opacity-50 ${
+                          getCanExport(u.email)
+                            ? "bg-green-500 border-green-400"
+                            : "bg-white/10 border-white/20"
+                        }`}
+                      >
+                        <span className={`block w-3.5 h-3.5 rounded-full transition-transform ${
+                          getCanExport(u.email) ? "bg-white translate-x-1.5" : "bg-gray-500 -translate-x-1.5"
+                        }`} />
+                      </button>
                     </td>
                     <td className="px-3 py-3 text-center">
                       {isBlocked(u.email) ? (

@@ -196,6 +196,8 @@ const translations = {
   col_role:             { de: "Rolle",                                     en: "Role" },
   role_user:            { de: "User",                                      en: "User" },
   role_user_admin:      { de: "User Admin",                                en: "User Admin" },
+  col_export:           { de: "Export",                                    en: "Export" },
+  export_excel:         { de: "Versendungen als Excel exportieren",        en: "Export dispatches as Excel" },
 
   // ── RichTextEditor ────────────────────────────────────────────────────────
   font_default:         { de: "Standard",                                  en: "Default" },
