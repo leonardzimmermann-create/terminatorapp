@@ -761,8 +761,8 @@ export default function ProtectedArea() {
 
       {/* Bestätigungs-Modal */}
       {showConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-gray-900 border border-white/10 rounded-2xl shadow-2xl w-full max-w-3xl p-6 space-y-5">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="bg-gray-900 border border-white/10 rounded-2xl shadow-2xl w-full max-w-3xl p-6 space-y-5 max-h-[90vh] overflow-y-auto my-auto">
             <h2 className="text-xl font-bold text-white">{t("confirm_send_title", lang)}</h2>
             <div className="bg-white/5 rounded-xl p-4 space-y-2 text-sm text-gray-300">
               <div className="flex justify-between">
