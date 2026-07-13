@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { periodStart, nextPeriodStart } from '@/lib/period'
 import AdminPanel from '@/components/AdminPanel'
 import AdminPageHeader from '@/components/AdminPageHeader'
+import DebugPanel from '@/components/DebugPanel'
 
 const ADMIN_EMAILS = ['leonard.zimmermann@smartflow-consulting.com', 'rolf.zimmermann@smartflow-consulting.com', 'marcel@sales-culture.de', 'david@sales-culture.de']
 
@@ -12,11 +13,16 @@ export default async function AdminPage() {
   const session = await getServerSession(authOptions)
   if (!session?.user?.email || !ADMIN_EMAILS.includes(session.user.email)) redirect('/app')
 
-  const [loginEvents, blacklist, domainLimitsRaw, userRoles] = await Promise.all([
+  const [loginEvents, blacklist, domainLimitsRaw, userRoles, myLogs] = await Promise.all([
     prisma.loginEvent.findMany({ orderBy: { createdAt: 'asc' } }),
     prisma.blacklistEntry.findMany({ orderBy: { createdAt: 'desc' } }),
     prisma.domainLimit.findMany({ orderBy: { domain: 'asc' } }),
     prisma.userRole.findMany(),
+    prisma.sendLog.findMany({
+      where: { userEmail: session.user.email },
+      orderBy: { sentAt: 'desc' },
+      include: { invitations: true },
+    }),
   ])
 
   // Erstes Login pro Domain aus den bereits geladenen LoginEvents ableiten
@@ -79,6 +85,9 @@ export default async function AdminPage() {
       <div className="max-w-6xl mx-auto">
         <AdminPageHeader userCount={userStats.length} blockedCount={blacklist.length} />
         <AdminPanel userStats={userStats} blacklist={blacklist} domainLimits={domainLimits} userRoles={userRoles} />
+        <div className="mt-10">
+          <DebugPanel logs={myLogs} />
+        </div>
       </div>
     </main>
   )
