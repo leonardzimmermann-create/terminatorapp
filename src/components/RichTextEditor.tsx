@@ -76,6 +76,40 @@ export default function RichTextEditor({ value, onChange, showVariables = true }
     }
   }, [value, editor])
 
+  // Aktuelle Formatierung an der Cursor-/Auswahlposition auslesen,
+  // damit Schriftart/-größe/-farbe im Menü vorbefüllt werden.
+  const textStyleAttrs = editor ? editor.getAttributes("textStyle") : {}
+  const currentFontFamily: string = textStyleAttrs.fontFamily ?? ""
+  const currentFontSize: string = textStyleAttrs.fontSize ?? ""
+  const currentColor: string = textStyleAttrs.color ?? ""
+
+  const FONT_OPTIONS = [
+    { value: "Arial, sans-serif", label: "Arial" },
+    { value: "'Times New Roman', serif", label: "Times New Roman" },
+    { value: "'Courier New', monospace", label: "Courier New" },
+    { value: "Georgia, serif", label: "Georgia" },
+    { value: "Verdana, sans-serif", label: "Verdana" },
+    { value: "Calibri, sans-serif", label: "Calibri" },
+  ]
+  const SIZE_OPTIONS = [8, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48].map((s) => `${s}pt`)
+  const fontIsKnown = currentFontFamily === "" || FONT_OPTIONS.some((o) => o.value === currentFontFamily)
+  const sizeIsKnown = currentFontSize === "" || SIZE_OPTIONS.includes(currentFontSize)
+
+  // Farbwert des markierten Texts als gültiges Hex für den Color-Picker aufbereiten
+  const toHex = (color: string): string => {
+    if (/^#[0-9a-fA-F]{6}$/.test(color)) return color.toLowerCase()
+    if (/^#[0-9a-fA-F]{3}$/.test(color)) return `#${color[1]}${color[1]}${color[2]}${color[2]}${color[3]}${color[3]}`.toLowerCase()
+    const m = color.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)/)
+    if (m) { const h = (n: string) => parseInt(n).toString(16).padStart(2, "0"); return `#${h(m[1])}${h(m[2])}${h(m[3])}` }
+    return "#000000"
+  }
+
+  // Color-Picker mit der Farbe des markierten Texts synchronisieren
+  useEffect(() => {
+    setColorInput(currentColor ? toHex(currentColor) : "#000000")
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentColor])
+
   const applyImageWidth = useCallback((width: string) => {
     const w = parseInt(width)
     if (!isNaN(w) && w > 0) {
@@ -119,15 +153,16 @@ export default function RichTextEditor({ value, onChange, showVariables = true }
             }
           }}
           className="border border-gray-300 rounded px-1 py-0.5 text-xs bg-white text-gray-700"
-          defaultValue=""
+          value={currentFontFamily}
+          title={currentFontFamily || t("font_default", lang)}
         >
           <option value="">{t("font_default", lang)}</option>
-          <option value="Arial, sans-serif">Arial</option>
-          <option value="'Times New Roman', serif">Times New Roman</option>
-          <option value="'Courier New', monospace">Courier New</option>
-          <option value="Georgia, serif">Georgia</option>
-          <option value="Verdana, sans-serif">Verdana</option>
-          <option value="Calibri, sans-serif">Calibri</option>
+          {FONT_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+          {!fontIsKnown && (
+            <option value={currentFontFamily}>{currentFontFamily}</option>
+          )}
         </select>
 
         <select
@@ -139,12 +174,16 @@ export default function RichTextEditor({ value, onChange, showVariables = true }
             }
           }}
           className="border border-gray-300 rounded px-1 py-0.5 text-xs bg-white text-gray-700"
-          defaultValue=""
+          value={currentFontSize}
+          title={currentFontSize || t("font_size", lang)}
         >
           <option value="">{t("font_size", lang)}</option>
-          {[8,10,11,12,14,16,18,20,24,28,32,36,48].map((s) => (
-            <option key={s} value={`${s}pt`}>{s}pt</option>
+          {SIZE_OPTIONS.map((s) => (
+            <option key={s} value={s}>{s}</option>
           ))}
+          {!sizeIsKnown && (
+            <option value={currentFontSize}>{currentFontSize}</option>
+          )}
         </select>
 
         <div className="w-px bg-gray-300 mx-1" />
